@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { useGame } from "@/lib/game-context"
 import { PlayerCard } from "./PlayerCard"
 import { GiftSender } from "./GiftSender"
@@ -67,13 +67,39 @@ export function SocialTab({ currentUserId, unclaimedGifts, onGiftsChanged }: Soc
   const [giftTarget, setGiftTarget] = useState<PlayerData | null>(null)
   const [claimingGift, setClaimingGift] = useState<string | null>(null)
   const [section, setSection] = useState<"leaderboard" | "gifts">("leaderboard")
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
+  const [changedIds, setChangedIds] = useState<Set<string>>(new Set())
+  const prevRanksRef = useRef<Map<string, number>>(new Map())
 
   const fetchPlayers = useCallback(async () => {
     try {
       const res = await fetch("/api/players")
       if (res.ok) {
         const data = await res.json()
-        setPlayers(data.players)
+        const newPlayers: PlayerData[] = data.players
+
+        // Detect rank changes
+        if (prevRanksRef.current.size > 0) {
+          const changed = new Set<string>()
+          newPlayers.forEach((p, i) => {
+            const prevRank = prevRanksRef.current.get(p.sessionId)
+            if (prevRank !== undefined && prevRank !== i) {
+              changed.add(p.sessionId)
+            }
+          })
+          if (changed.size > 0) {
+            setChangedIds(changed)
+            setTimeout(() => setChangedIds(new Set()), 2000)
+          }
+        }
+
+        // Store current ranks for next comparison
+        const rankMap = new Map<string, number>()
+        newPlayers.forEach((p, i) => rankMap.set(p.sessionId, i))
+        prevRanksRef.current = rankMap
+
+        setPlayers(newPlayers)
+        setLastUpdated(new Date())
       }
     } catch {
       // ignore
@@ -82,9 +108,15 @@ export function SocialTab({ currentUserId, unclaimedGifts, onGiftsChanged }: Soc
     }
   }, [])
 
+  // Initial fetch + poll every 15s while leaderboard is visible
   useEffect(() => {
     fetchPlayers()
-  }, [fetchPlayers])
+
+    if (section !== "leaderboard") return
+
+    const interval = setInterval(fetchPlayers, 15_000)
+    return () => clearInterval(interval)
+  }, [fetchPlayers, section])
 
   const handleClaimGift = async (giftId: string) => {
     setClaimingGift(giftId)
@@ -147,8 +179,16 @@ export function SocialTab({ currentUserId, unclaimedGifts, onGiftsChanged }: Soc
         {/* Leaderboard */}
         {section === "leaderboard" && (
           <div>
-            <div className="text-violet-400 font-pixel text-xs mb-3">
-              * Ranking de Aventureros
+            <div className="flex items-center justify-between mb-3">
+              <div className="text-violet-400 font-pixel text-xs">
+                * Ranking de Aventureros
+              </div>
+              {lastUpdated && (
+                <div className="flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+                  <span className="text-gray-600 font-pixel text-[6px]">LIVE</span>
+                </div>
+              )}
             </div>
             {loading ? (
               <div className="text-gray-500 font-pixel text-[10px] text-center py-8">
@@ -162,14 +202,17 @@ export function SocialTab({ currentUserId, unclaimedGifts, onGiftsChanged }: Soc
               <div className="space-y-1 max-h-64 overflow-y-auto game-scrollbar">
                 {players.map((player, index) => {
                   const isMe = player.sessionId === currentUserId
+                  const rankChanged = changedIds.has(player.sessionId)
                   return (
                     <button
                       key={player.sessionId}
                       onClick={() => setSelectedPlayer(player)}
-                      className={`w-full p-2 border text-left flex items-center gap-2 transition-colors ${
-                        isMe
-                          ? "border-violet-400/50 bg-violet-400/5 hover:bg-violet-400/10"
-                          : "border-white/10 hover:border-white/30 hover:bg-white/5"
+                      className={`w-full p-2 border text-left flex items-center gap-2 transition-all duration-700 ${
+                        rankChanged
+                          ? "border-yellow-400/60 bg-yellow-400/10"
+                          : isMe
+                            ? "border-violet-400/50 bg-violet-400/5 hover:bg-violet-400/10"
+                            : "border-white/10 hover:border-white/30 hover:bg-white/5"
                       }`}
                     >
                       {/* Rank */}
