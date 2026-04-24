@@ -21,7 +21,11 @@ export async function GET() {
     }))
 
     return Response.json({ gifts: result.Items || [] })
-  } catch (error) {
+  } catch (error: unknown) {
+    // If the table doesn't exist yet, return empty gifts
+    if (error && typeof error === "object" && "name" in error && error.name === "ResourceNotFoundException") {
+      return Response.json({ gifts: [] })
+    }
     console.error("Fetch gifts error:", error)
     return Response.json({ error: "Failed to fetch gifts" }, { status: 500 })
   }

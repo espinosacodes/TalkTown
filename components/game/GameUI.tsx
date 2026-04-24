@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { useGame } from "@/lib/game-context"
 import { GameCanvas } from "./GameCanvas"
 import { NPCWorld } from "./NPCWorld"
@@ -10,11 +10,17 @@ import { HUD } from "./HUD"
 import { CraftingScreen } from "./CraftingScreen"
 import { JournalScreen } from "./JournalScreen"
 import { SocialTab } from "./SocialTab"
+import { TouchControls } from "./TouchControls"
 import { MiniGameWordMatch } from "./MiniGameWordMatch"
 import { MiniGameFlashcard } from "./MiniGameFlashcard"
 import { MiniGameFishing } from "./MiniGameFishing"
+import { useIsTouchDevice } from "@/hooks/use-touch-device"
+import { AREA_MAPS } from "@/lib/tile-map"
+import { getNPCsInArea } from "@/lib/npc-profiles"
 import type { NPCProfile, MiniGameType } from "@/lib/game-state"
 import { SHOP_ITEMS } from "@/lib/game-state"
+
+const TILE_SIZE = 36
 
 // Simple player avatar component
 function PlayerAvatar({ outfit, hat }: { outfit: string; hat: string }) {
@@ -60,6 +66,56 @@ export function GameUI() {
   const [showInventory, setShowInventory] = useState(false)
   const [activeMiniGame, setActiveMiniGame] = useState<MiniGameType | null>(null)
   const [unclaimedGifts, setUnclaimedGifts] = useState<Array<{ recipientId: string; giftId: string; senderId: string; senderName: string; type: "item" | "gold"; itemId?: string; itemName?: string; amount?: number; createdAt: number; claimed: boolean }>>([])
+
+  const isTouchDevice = useIsTouchDevice()
+  const canvasWrapperRef = useRef<HTMLDivElement>(null)
+  const [canvasScale, setCanvasScale] = useState(1)
+
+  // Compute responsive canvas scale
+  useEffect(() => {
+    if (!gameState) return
+    const areaMap = AREA_MAPS[gameState.currentArea]
+    const canvasW = areaMap.width * TILE_SIZE
+    const canvasH = areaMap.height * TILE_SIZE
+
+    const recalc = () => {
+      const availW = window.innerWidth - 32 // px-4 on each side
+      const availH = window.innerHeight - 120 // top nav + some padding
+      setCanvasScale(Math.min(1, availW / canvasW, availH / canvasH))
+    }
+
+    recalc()
+    window.addEventListener("resize", recalc)
+    return () => window.removeEventListener("resize", recalc)
+  }, [gameState?.currentArea, gameState])
+
+  // Toggle body scroll lock on touch devices when on world panel
+  useEffect(() => {
+    if (isTouchDevice && activePanel === "world") {
+      document.body.classList.add("touch-game-active")
+    } else {
+      document.body.classList.remove("touch-game-active")
+    }
+    return () => document.body.classList.remove("touch-game-active")
+  }, [isTouchDevice, activePanel])
+
+  // Touch action handler (TALK / ESC)
+  const handleTouchAction = useCallback(() => {
+    if (activeNpcId) {
+      setActiveNpcId(null)
+    } else if (gameState) {
+      // Try to talk to nearby NPC — same logic as Space key
+      const npcsInArea = getNPCsInArea(gameState.currentArea)
+      const nearbyNpc = npcsInArea.find((npc: NPCProfile) => {
+        const dx = Math.abs(gameState.playerPosition.x - npc.position.x)
+        const dy = Math.abs(gameState.playerPosition.y - npc.position.y)
+        return dx <= 1 && dy <= 1
+      })
+      if (nearbyNpc) {
+        setActiveNpcId(nearbyNpc.id)
+      }
+    }
+  }, [activeNpcId, setActiveNpcId, gameState])
 
   const fetchGifts = useCallback(async () => {
     try {
@@ -114,47 +170,51 @@ export function GameUI() {
           <div className="flex">
             <button
               onClick={() => setActivePanel("world")}
-              className={`flex-1 py-3 font-pixel text-[10px] border-b-2 transition-colors ${
+              className={`flex-1 py-4 sm:py-3 font-pixel text-[10px] border-b-2 transition-colors ${
                 activePanel === "world"
                   ? "text-yellow-400 border-yellow-400"
                   : "text-gray-500 border-transparent hover:text-white"
               }`}
             >
-              MUNDO / WORLD
+              <span className="sm:hidden">MUNDO</span>
+              <span className="hidden sm:inline">MUNDO / WORLD</span>
             </button>
             <button
               onClick={() => setActivePanel("map")}
-              className={`flex-1 py-3 font-pixel text-[10px] border-b-2 transition-colors ${
+              className={`flex-1 py-4 sm:py-3 font-pixel text-[10px] border-b-2 transition-colors ${
                 activePanel === "map"
                   ? "text-green-400 border-green-400"
                   : "text-gray-500 border-transparent hover:text-white"
               }`}
             >
-              MAPA / MAP
+              <span className="sm:hidden">MAPA</span>
+              <span className="hidden sm:inline">MAPA / MAP</span>
             </button>
             <button
               onClick={() => setActivePanel("vocab")}
-              className={`flex-1 py-3 font-pixel text-[10px] border-b-2 transition-colors ${
+              className={`flex-1 py-4 sm:py-3 font-pixel text-[10px] border-b-2 transition-colors ${
                 activePanel === "vocab"
                   ? "text-cyan-400 border-cyan-400"
                   : "text-gray-500 border-transparent hover:text-white"
               }`}
             >
-              PALABRAS / WORDS ({gameState.vocabularyLearned.length})
+              <span className="sm:hidden">WORDS</span>
+              <span className="hidden sm:inline">PALABRAS / WORDS ({gameState.vocabularyLearned.length})</span>
             </button>
             <button
               onClick={() => setActivePanel("shop")}
-              className={`flex-1 py-3 font-pixel text-[10px] border-b-2 transition-colors ${
+              className={`flex-1 py-4 sm:py-3 font-pixel text-[10px] border-b-2 transition-colors ${
                 activePanel === "shop"
                   ? "text-pink-400 border-pink-400"
                   : "text-gray-500 border-transparent hover:text-white"
               }`}
             >
-              TIENDA / SHOP
+              <span className="sm:hidden">TIENDA</span>
+              <span className="hidden sm:inline">TIENDA / SHOP</span>
             </button>
             <button
               onClick={() => setActivePanel("social")}
-              className={`flex-1 py-3 font-pixel text-[10px] border-b-2 transition-colors relative ${
+              className={`flex-1 py-4 sm:py-3 font-pixel text-[10px] border-b-2 transition-colors relative ${
                 activePanel === "social"
                   ? "text-violet-400 border-violet-400"
                   : "text-gray-500 border-transparent hover:text-white"
@@ -176,7 +236,16 @@ export function GameUI() {
         <div className="max-w-4xl mx-auto">
           {activePanel === "world" && (
             <div className="flex flex-col items-center">
-              <GameCanvas />
+              <div
+                ref={canvasWrapperRef}
+                style={{
+                  transform: canvasScale < 1 ? `scale(${canvasScale})` : undefined,
+                  transformOrigin: "top center",
+                  width: canvasScale < 1 ? "max-content" : undefined,
+                }}
+              >
+                <GameCanvas />
+              </div>
             </div>
           )}
 
@@ -299,6 +368,15 @@ export function GameUI() {
         <DialogueBox
           npcId={activeNpcId}
           onClose={() => setActiveNpcId(null)}
+        />
+      )}
+
+      {/* Touch Controls */}
+      {isTouchDevice && activePanel === "world" && (
+        <TouchControls
+          disabled={!!activeNpcId}
+          onAction={handleTouchAction}
+          actionLabel={activeNpcId ? "ESC" : "TALK"}
         />
       )}
 

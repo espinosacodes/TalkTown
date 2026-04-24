@@ -19,7 +19,7 @@ export function HUD({ onOpenJournal, onOpenCrafting, onOpenInventory, pendingGif
   const wordsLearned = gameState.vocabularyLearned.length
 
   return (
-    <div className="fixed top-12 left-2 right-2 flex items-start justify-between pointer-events-none z-20">
+    <div className="fixed top-16 left-2 right-2 flex items-start justify-between pointer-events-none z-20">
       {/* Left side - Area name */}
       <div className="pointer-events-auto">
         <div className="bg-black/80 border border-white/20 px-3 py-1.5 rounded-sm">
@@ -35,7 +35,7 @@ export function HUD({ onOpenJournal, onOpenCrafting, onOpenInventory, pendingGif
         {onOpenJournal && (
           <button
             onClick={onOpenJournal}
-            className="bg-black/80 border border-white/20 px-2 py-1 rounded-sm hover:border-yellow-400 transition-colors"
+            className="bg-black/80 border border-white/20 px-2 py-1 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-sm hover:border-yellow-400 transition-colors"
             title="Journal"
           >
             <span className="text-pink-400 font-pixel text-[8px]">J</span>
@@ -44,7 +44,7 @@ export function HUD({ onOpenJournal, onOpenCrafting, onOpenInventory, pendingGif
         {onOpenCrafting && (
           <button
             onClick={onOpenCrafting}
-            className="bg-black/80 border border-white/20 px-2 py-1 rounded-sm hover:border-yellow-400 transition-colors"
+            className="bg-black/80 border border-white/20 px-2 py-1 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-sm hover:border-yellow-400 transition-colors"
             title="Crafting"
           >
             <span className="text-orange-400 font-pixel text-[8px]">C</span>
@@ -53,7 +53,7 @@ export function HUD({ onOpenJournal, onOpenCrafting, onOpenInventory, pendingGif
         {onOpenInventory && (
           <button
             onClick={onOpenInventory}
-            className="bg-black/80 border border-white/20 px-2 py-1 rounded-sm hover:border-yellow-400 transition-colors"
+            className="bg-black/80 border border-white/20 px-2 py-1 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-sm hover:border-yellow-400 transition-colors"
             title="Inventory"
           >
             <span className="text-green-400 font-pixel text-[8px]">I</span>

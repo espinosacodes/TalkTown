@@ -358,3 +358,21 @@
 .wave-crash {
   animation: waveCrash 3s ease-in-out infinite;
 }
+
+/* Mobile touch support */
+html, body {
+  overscroll-behavior: none;
+}
+
+.touch-game-active {
+  touch-action: none;
+  overflow: hidden;
+  position: fixed;
+  inset: 0;
+}
+
+@media (hover: none) and (pointer: coarse) {
+  .keyboard-hint {
+    display: none;
+  }
+}

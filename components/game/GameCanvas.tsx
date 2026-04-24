@@ -215,7 +215,7 @@ export function GameCanvas() {
       )}
 
       {/* Movement hint */}
-      <div className="mt-3 undertale-box p-1">
+      <div className="mt-3 undertale-box p-1 keyboard-hint">
         <div className="bg-black px-4 py-2">
           <span className="text-gray-500 font-pixel text-[8px]">
             [WASD] Mover/Move | [SPACE] Hablar/Talk | [ESC] Cerrar/Close

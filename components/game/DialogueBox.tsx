@@ -29,7 +29,7 @@ export function DialogueBox({ npcId, onClose }: DialogueBoxProps) {
   const [suggestedPhrases, setSuggestedPhrases] = useState<{ phrase: string; reading: string; meaning: string }[]>([])
   const [corrections, setCorrections] = useState<{ playerSaid: string; correctedForm: string; explanation: string }[]>([])
   const [quizzes, setQuizzes] = useState<{ word: string; hint: string }[]>([])
-  const [hasSentInitial, setHasSentInitial] = useState(false)
+  const hasSentInitialRef = useRef(false)
   const [isListening, setIsListening] = useState(false)
   const [memories, setMemories] = useState<ConversationSummary[]>([])
   const [gossip, setGossip] = useState<{ npcName: string; relationship: string; summary: string }[]>([])
@@ -112,15 +112,15 @@ export function DialogueBox({ npcId, onClose }: DialogueBoxProps) {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [messages])
 
-  // Send initial greeting
+  // Send initial greeting (use ref to survive React Strict Mode double-invoke)
   useEffect(() => {
-    if (!hasSentInitial && npc) {
-      setHasSentInitial(true)
+    if (!hasSentInitialRef.current && npc) {
+      hasSentInitialRef.current = true
       sendMessage({
         text: `*${gameState?.playerName || "Traveler"} approaches ${npc.name.es}*`,
       })
     }
-  }, [hasSentInitial, npc]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [npc]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Focus input when not loading
   useEffect(() => {
@@ -298,7 +298,7 @@ export function DialogueBox({ npcId, onClose }: DialogueBoxProps) {
 
             {/* Messages area */}
             <div className="max-h-48 overflow-y-auto game-scrollbar mb-3 space-y-2">
-              {messages.map((msg) => {
+              {messages.filter((msg, idx, arr) => arr.findIndex(m => m.id === msg.id) === idx).map((msg) => {
                 const text = getMessageText(msg)
                 if (!text) return null
                 return (
