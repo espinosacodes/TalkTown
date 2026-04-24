@@ -35,6 +35,8 @@ export function DialogueBox({ npcId, onClose }: DialogueBoxProps) {
   const [gossip, setGossip] = useState<{ npcName: string; relationship: string; summary: string }[]>([])
   const [ttsEnabled, setTtsEnabled] = useState(true)
   const lastSpokenIdRef = useRef<string | null>(null)
+  const ttsUnlockedRef = useRef(false)
+  const iosResumeTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const sessionWordsLearnedRef = useRef<string[]>([])
   const recognitionRef = useRef<SpeechRecognition | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -131,7 +133,7 @@ export function DialogueBox({ npcId, onClose }: DialogueBoxProps) {
 
   // Save conversation summary and close
   const handleClose = useCallback(() => {
-    speechSynthesis.cancel()
+    if (hasTtsSupport) speechSynthesis.cancel()
     if (messages.length > 2) {
       fetch("/api/summarize-conversation", {
         method: "POST",
@@ -159,16 +161,58 @@ export function DialogueBox({ npcId, onClose }: DialogueBoxProps) {
     return () => window.removeEventListener("keydown", handleKey)
   }, [handleClose])
 
+  // TTS: check support
+  const hasTtsSupport = typeof window !== "undefined" && "speechSynthesis" in window
+
+  // iOS requires speechSynthesis.speak() to first be called from a user gesture.
+  // This unlocks the audio context; subsequent programmatic calls then work.
+  const unlockTts = useCallback(() => {
+    if (ttsUnlockedRef.current || !hasTtsSupport) return
+    ttsUnlockedRef.current = true
+    const warm = new SpeechSynthesisUtterance("")
+    warm.volume = 0
+    speechSynthesis.speak(warm)
+  }, [hasTtsSupport])
+
   // TTS: speak NPC messages when streaming finishes
   const speak = useCallback((text: string) => {
-    if (!ttsEnabled || !text) return
+    if (!ttsEnabled || !text || !hasTtsSupport) return
+    if (!ttsUnlockedRef.current) return // not unlocked yet, skip silently
     speechSynthesis.cancel()
+    // Clear any previous iOS keepalive timer
+    if (iosResumeTimerRef.current) {
+      clearInterval(iosResumeTimerRef.current)
+      iosResumeTimerRef.current = null
+    }
     const utterance = new SpeechSynthesisUtterance(text)
     utterance.lang = gameState?.language === "en-to-es" ? "es-ES" : "en-US"
     utterance.rate = 0.85
     utterance.pitch = 1.0
+    // iOS Safari pauses speech after ~15s; periodically nudge it to keep going
+    utterance.onstart = () => {
+      iosResumeTimerRef.current = setInterval(() => {
+        if (!speechSynthesis.speaking) {
+          if (iosResumeTimerRef.current) clearInterval(iosResumeTimerRef.current)
+          return
+        }
+        speechSynthesis.pause()
+        speechSynthesis.resume()
+      }, 5000)
+    }
+    utterance.onend = () => {
+      if (iosResumeTimerRef.current) {
+        clearInterval(iosResumeTimerRef.current)
+        iosResumeTimerRef.current = null
+      }
+    }
+    utterance.onerror = () => {
+      if (iosResumeTimerRef.current) {
+        clearInterval(iosResumeTimerRef.current)
+        iosResumeTimerRef.current = null
+      }
+    }
     speechSynthesis.speak(utterance)
-  }, [ttsEnabled, gameState?.language])
+  }, [ttsEnabled, gameState?.language, hasTtsSupport])
 
   useEffect(() => {
     if (isLoading) return
@@ -182,8 +226,11 @@ export function DialogueBox({ npcId, onClose }: DialogueBoxProps) {
 
   // Stop TTS on unmount
   useEffect(() => {
-    return () => { speechSynthesis.cancel() }
-  }, [])
+    return () => {
+      if (hasTtsSupport) speechSynthesis.cancel()
+      if (iosResumeTimerRef.current) clearInterval(iosResumeTimerRef.current)
+    }
+  }, [hasTtsSupport])
 
   // Speech recognition setup
   const hasSpeechSupport = typeof window !== "undefined" && ("SpeechRecognition" in window || "webkitSpeechRecognition" in window)
@@ -230,6 +277,7 @@ export function DialogueBox({ npcId, onClose }: DialogueBoxProps) {
     const text = inputValue.trim()
     if (!text || isLoading) return
 
+    unlockTts() // user gesture — unlock iOS TTS
     incrementStats("words")
     sendMessage({ text })
     setInputValue("")
@@ -276,7 +324,8 @@ export function DialogueBox({ npcId, onClose }: DialogueBoxProps) {
               </div>
               <button
                 onClick={() => {
-                  speechSynthesis.cancel()
+                  unlockTts()
+                  if (hasTtsSupport) speechSynthesis.cancel()
                   setTtsEnabled(prev => !prev)
                 }}
                 className={`font-pixel text-[8px] border px-2 py-1 transition-colors ${
