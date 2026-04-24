@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useRef } from "react"
+import { useCallback, useRef, useState } from "react"
 import { useGame } from "@/lib/game-context"
 
 interface TouchControlsProps {
@@ -9,27 +9,38 @@ interface TouchControlsProps {
   actionLabel: string
 }
 
+const BASE_SIZE = 140
+const KNOB_SIZE = 56
+const DEAD_ZONE = 15 // px – ignore tiny drags
+const MOVE_THRESHOLD = 0.38 // normalised radius to fire a move (0-1)
+
 export function TouchControls({ disabled, onAction, actionLabel }: TouchControlsProps) {
   const { movePlayer } = useGame()
+
+  // Joystick visual state
+  const [knobOffset, setKnobOffset] = useState({ x: 0, y: 0 })
+  const [active, setActive] = useState(false)
+
+  // Refs for repeat-move logic
+  const baseRef = useRef<HTMLDivElement>(null)
+  const centerRef = useRef({ x: 0, y: 0 })
+  const lastDirRef = useRef<{ dx: number; dy: number } | null>(null)
   const repeatTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const intervalTimer = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const clearTimers = useCallback(() => {
-    if (repeatTimer.current) {
-      clearTimeout(repeatTimer.current)
-      repeatTimer.current = null
-    }
-    if (intervalTimer.current) {
-      clearInterval(intervalTimer.current)
-      intervalTimer.current = null
-    }
+    if (repeatTimer.current) { clearTimeout(repeatTimer.current); repeatTimer.current = null }
+    if (intervalTimer.current) { clearInterval(intervalTimer.current); intervalTimer.current = null }
   }, [])
 
-  const handleDirStart = useCallback(
+  const startRepeat = useCallback(
     (dx: number, dy: number) => {
       if (disabled) return
-      movePlayer(dx, dy)
+      // Only fire if direction actually changed
+      if (lastDirRef.current?.dx === dx && lastDirRef.current?.dy === dy) return
+      lastDirRef.current = { dx, dy }
       clearTimers()
+      movePlayer(dx, dy)
       repeatTimer.current = setTimeout(() => {
         intervalTimer.current = setInterval(() => {
           movePlayer(dx, dy)
@@ -39,24 +50,78 @@ export function TouchControls({ disabled, onAction, actionLabel }: TouchControls
     [disabled, movePlayer, clearTimers],
   )
 
-  const handleDirEnd = useCallback(() => {
+  const stopRepeat = useCallback(() => {
+    lastDirRef.current = null
     clearTimers()
   }, [clearTimers])
 
-  const preventAndMove = useCallback(
-    (dx: number, dy: number) => (e: React.TouchEvent) => {
-      e.preventDefault()
-      handleDirStart(dx, dy)
+  /** Map a touch position to a 4-direction {dx,dy} or null when inside dead zone */
+  const resolveDirection = useCallback(
+    (touchX: number, touchY: number) => {
+      const cx = centerRef.current.x
+      const cy = centerRef.current.y
+      const rawX = touchX - cx
+      const rawY = touchY - cy
+      const dist = Math.sqrt(rawX * rawX + rawY * rawY)
+      const maxR = BASE_SIZE / 2
+
+      // Clamp knob visual to base radius
+      const clampedDist = Math.min(dist, maxR - KNOB_SIZE / 2)
+      const angle = Math.atan2(rawY, rawX)
+      setKnobOffset({
+        x: Math.cos(angle) * clampedDist,
+        y: Math.sin(angle) * clampedDist,
+      })
+
+      if (dist < DEAD_ZONE) return null
+
+      // Convert angle to 4-direction: right=0, down=π/2, left=±π, up=-π/2
+      const deg = ((angle * 180) / Math.PI + 360) % 360
+      if (deg >= 315 || deg < 45) return { dx: 1, dy: 0 }
+      if (deg >= 45 && deg < 135) return { dx: 0, dy: 1 }
+      if (deg >= 135 && deg < 225) return { dx: -1, dy: 0 }
+      return { dx: 0, dy: -1 }
     },
-    [handleDirStart],
+    [],
   )
 
-  const preventTouchEnd = useCallback(
+  const onTouchStart = useCallback(
     (e: React.TouchEvent) => {
       e.preventDefault()
-      handleDirEnd()
+      if (!baseRef.current) return
+      const rect = baseRef.current.getBoundingClientRect()
+      centerRef.current = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 }
+      setActive(true)
+
+      const t = e.touches[0]
+      const dir = resolveDirection(t.clientX, t.clientY)
+      if (dir) startRepeat(dir.dx, dir.dy)
     },
-    [handleDirEnd],
+    [resolveDirection, startRepeat],
+  )
+
+  const onTouchMove = useCallback(
+    (e: React.TouchEvent) => {
+      e.preventDefault()
+      const t = e.touches[0]
+      const dir = resolveDirection(t.clientX, t.clientY)
+      if (dir) {
+        startRepeat(dir.dx, dir.dy)
+      } else {
+        stopRepeat()
+      }
+    },
+    [resolveDirection, startRepeat, stopRepeat],
+  )
+
+  const onTouchEnd = useCallback(
+    (e: React.TouchEvent) => {
+      e.preventDefault()
+      setKnobOffset({ x: 0, y: 0 })
+      setActive(false)
+      stopRepeat()
+    },
+    [stopRepeat],
   )
 
   return (
@@ -65,58 +130,43 @@ export function TouchControls({ disabled, onAction, actionLabel }: TouchControls
       style={{ paddingBottom: "max(1rem, env(safe-area-inset-bottom))" }}
     >
       <div className="flex items-end justify-between px-4 pb-2">
-        {/* D-Pad */}
-        <div className="pointer-events-auto grid grid-cols-3 grid-rows-3 gap-0 select-none" style={{ width: 168, height: 168 }}>
-          {/* Row 1 */}
-          <div />
-          <button
-            className="flex items-center justify-center bg-white/10 active:bg-white/25 border border-white/20 rounded-t-lg"
-            style={{ width: 56, height: 56 }}
-            onTouchStart={preventAndMove(0, -1)}
-            onTouchEnd={preventTouchEnd}
-            onTouchCancel={preventTouchEnd}
-            aria-label="Move up"
-          >
-            <Arrow direction="up" />
-          </button>
-          <div />
+        {/* Joystick */}
+        <div
+          ref={baseRef}
+          className="pointer-events-auto relative select-none rounded-full"
+          style={{
+            width: BASE_SIZE,
+            height: BASE_SIZE,
+            background: active
+              ? "radial-gradient(circle, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0.04) 100%)"
+              : "radial-gradient(circle, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 100%)",
+            border: "2px solid rgba(255,255,255,0.15)",
+          }}
+          onTouchStart={onTouchStart}
+          onTouchMove={onTouchMove}
+          onTouchEnd={onTouchEnd}
+          onTouchCancel={onTouchEnd}
+          aria-label="Joystick"
+        >
+          {/* Direction indicators */}
+          <DirectionIndicators />
 
-          {/* Row 2 */}
-          <button
-            className="flex items-center justify-center bg-white/10 active:bg-white/25 border border-white/20 rounded-l-lg"
-            style={{ width: 56, height: 56 }}
-            onTouchStart={preventAndMove(-1, 0)}
-            onTouchEnd={preventTouchEnd}
-            onTouchCancel={preventTouchEnd}
-            aria-label="Move left"
-          >
-            <Arrow direction="left" />
-          </button>
-          <div className="bg-white/5 border border-white/10" style={{ width: 56, height: 56 }} />
-          <button
-            className="flex items-center justify-center bg-white/10 active:bg-white/25 border border-white/20 rounded-r-lg"
-            style={{ width: 56, height: 56 }}
-            onTouchStart={preventAndMove(1, 0)}
-            onTouchEnd={preventTouchEnd}
-            onTouchCancel={preventTouchEnd}
-            aria-label="Move right"
-          >
-            <Arrow direction="right" />
-          </button>
-
-          {/* Row 3 */}
-          <div />
-          <button
-            className="flex items-center justify-center bg-white/10 active:bg-white/25 border border-white/20 rounded-b-lg"
-            style={{ width: 56, height: 56 }}
-            onTouchStart={preventAndMove(0, 1)}
-            onTouchEnd={preventTouchEnd}
-            onTouchCancel={preventTouchEnd}
-            aria-label="Move down"
-          >
-            <Arrow direction="down" />
-          </button>
-          <div />
+          {/* Knob */}
+          <div
+            className="absolute rounded-full"
+            style={{
+              width: KNOB_SIZE,
+              height: KNOB_SIZE,
+              top: "50%",
+              left: "50%",
+              transform: `translate(calc(-50% + ${knobOffset.x}px), calc(-50% + ${knobOffset.y}px))`,
+              background: active
+                ? "radial-gradient(circle, rgba(250,204,21,0.5) 0%, rgba(250,204,21,0.2) 100%)"
+                : "radial-gradient(circle, rgba(255,255,255,0.25) 0%, rgba(255,255,255,0.1) 100%)",
+              border: active ? "2px solid rgba(250,204,21,0.6)" : "2px solid rgba(255,255,255,0.25)",
+              transition: active ? "none" : "transform 0.15s ease-out, background 0.15s, border 0.15s",
+            }}
+          />
         </div>
 
         {/* Action button */}
@@ -135,23 +185,33 @@ export function TouchControls({ disabled, onAction, actionLabel }: TouchControls
   )
 }
 
-function Arrow({ direction }: { direction: "up" | "down" | "left" | "right" }) {
-  const rotation = {
-    up: "rotate(-90deg)",
-    down: "rotate(90deg)",
-    left: "rotate(180deg)",
-    right: "rotate(0deg)",
-  }[direction]
+/** Subtle arrow hints on the joystick base */
+function DirectionIndicators() {
+  const arrows = [
+    { d: "M70 18l-5-6-5 6", label: "up" },    // top
+    { d: "M70 122l-5 6-5-6", label: "down" },  // bottom
+    { d: "M18 70l-6-5 6-5", label: "left" },   // left
+    { d: "M122 70l6-5-6-5", label: "right" },  // right
+  ]
 
   return (
     <svg
-      width="20"
-      height="20"
-      viewBox="0 0 20 20"
+      className="absolute inset-0 pointer-events-none"
+      width={BASE_SIZE}
+      height={BASE_SIZE}
+      viewBox={`0 0 ${BASE_SIZE} ${BASE_SIZE}`}
       fill="none"
-      style={{ transform: rotation }}
     >
-      <path d="M7 4l6 6-6 6" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      {arrows.map(({ d, label }) => (
+        <path
+          key={label}
+          d={d}
+          stroke="rgba(255,255,255,0.2)"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      ))}
     </svg>
   )
 }
