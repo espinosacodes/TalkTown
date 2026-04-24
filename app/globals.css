@@ -1,0 +1,291 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  /* Undertale-inspired dark theme */
+  --background: #0a0a0a;
+  --foreground: #ffffff;
+  --card: #1a1a2e;
+  --card-foreground: #ffffff;
+  --popover: #1a1a2e;
+  --popover-foreground: #ffffff;
+  --primary: #ffff00;
+  --primary-foreground: #0a0a0a;
+  --secondary: #2a2a4a;
+  --secondary-foreground: #ffffff;
+  --muted: #1a1a2e;
+  --muted-foreground: #808080;
+  --accent: #ff6b35;
+  --accent-foreground: #ffffff;
+  --destructive: #ff0000;
+  --destructive-foreground: #ffffff;
+  --border: #3a3a5a;
+  --input: #2a2a4a;
+  --ring: #ffff00;
+  --chart-1: #ffff00;
+  --chart-2: #00ffff;
+  --chart-3: #ff00ff;
+  --chart-4: #00ff00;
+  --chart-5: #ff6b35;
+  --radius: 0.25rem;
+  --sidebar: #0d0d15;
+  --sidebar-foreground: #ffffff;
+  --sidebar-primary: #ffff00;
+  --sidebar-primary-foreground: #0a0a0a;
+  --sidebar-accent: #2a2a4a;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: #3a3a5a;
+  --sidebar-ring: #ffff00;
+}
+
+@theme inline {
+  --font-sans: 'Geist', 'Geist Fallback';
+  --font-mono: 'Geist Mono', 'Geist Mono Fallback';
+  --font-pixel: var(--font-pixel), 'Press Start 2P', monospace;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --radius-sm: calc(var(--radius) - 2px);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) + 2px);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Pixel art font utility - Undertale style */
+.font-pixel {
+  font-family: var(--font-pixel), 'Press Start 2P', monospace;
+  font-size: 0.625rem;
+  line-height: 1.8;
+  letter-spacing: 0.05em;
+}
+
+/* Pixel art image rendering */
+.pixel-art {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+/* Undertale-style dialogue box */
+.undertale-box {
+  background: #000000;
+  border: 4px solid #ffffff;
+  box-shadow: 
+    inset 0 0 0 2px #000000,
+    inset 0 0 0 4px #ffffff;
+}
+
+/* Text typing effect */
+@keyframes blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}
+
+.cursor-blink::after {
+  content: "_";
+  animation: blink 0.7s infinite;
+}
+
+/* Custom scrollbar for game panels - dark theme */
+.game-scrollbar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.game-scrollbar::-webkit-scrollbar-track {
+  background: #1a1a2e;
+}
+
+.game-scrollbar::-webkit-scrollbar-thumb {
+  background: #3a3a5a;
+  border: 1px solid #ffffff;
+}
+
+.game-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #4a4a6a;
+}
+
+/* Undertale yellow selection */
+::selection {
+  background: #ffff00;
+  color: #000000;
+}
+
+/* Pixel perfect borders */
+.pixel-border {
+  border-width: 4px;
+  border-style: solid;
+  border-image: 
+    linear-gradient(to right, #fff 0%, #fff 100%) 1;
+}
+
+/* Soul heart animation */
+@keyframes soul-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+}
+
+.soul-heart {
+  animation: soul-pulse 1s ease-in-out infinite;
+}
+
+/* Slow bounce for NPCs */
+@keyframes bounce-slow {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+.animate-bounce-slow {
+  animation: bounce-slow 2s ease-in-out infinite;
+}
+
+/* Scanline effect for retro feel */
+.scanlines::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(0, 0, 0, 0.1) 0px,
+    rgba(0, 0, 0, 0.1) 1px,
+    transparent 1px,
+    transparent 2px
+  );
+  pointer-events: none;
+}
+
+/* Area transition overlay */
+.area-transition-overlay {
+  background: rgba(0, 0, 0, 0.95);
+  animation: areaFade 1.2s ease-in-out forwards;
+}
+
+@keyframes areaFade {
+  0% { opacity: 1; }
+  30% { opacity: 1; }
+  70% { opacity: 1; }
+  100% { opacity: 0; pointer-events: none; }
+}
+
+.area-transition-text {
+  animation: areaTextPop 1.2s ease-in-out;
+}
+
+@keyframes areaTextPop {
+  0% { opacity: 0; transform: scale(0.8); }
+  20% { opacity: 1; transform: scale(1); }
+  80% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1.1); }
+}
+
+/* Water shimmer */
+@keyframes waterShimmer {
+  0%, 100% { opacity: 0.8; }
+  50% { opacity: 1; }
+}
+
+.water-shimmer {
+  animation: waterShimmer 3s ease-in-out infinite;
+}
+
+/* Water sparkle */
+@keyframes waterSparkle {
+  0%, 100% { opacity: 0; transform: scale(0.5); }
+  50% { opacity: 1; transform: scale(1.5); }
+}
+
+.water-sparkle {
+  animation: waterSparkle 2s ease-in-out infinite;
+}
+
+/* Flower sway */
+@keyframes flowerSway {
+  0%, 100% { transform: rotate(-3deg); }
+  50% { transform: rotate(3deg); }
+}
+
+.flower-sway {
+  animation: flowerSway 3s ease-in-out infinite;
+  transform-origin: bottom center;
+}
+
+/* Door glow hint */
+.door-glow {
+  box-shadow: 0 0 8px rgba(255, 200, 0, 0.2);
+}
+
+/* Falling leaves */
+@keyframes fallingLeaf {
+  0% { top: -5%; opacity: 0; transform: translateX(0) rotate(0deg); }
+  10% { opacity: 0.6; }
+  100% { top: 100%; opacity: 0; transform: translateX(30px) rotate(360deg); }
+}
+
+.falling-leaf {
+  animation: fallingLeaf 6s ease-in-out infinite;
+}
+
+/* Rising steam */
+@keyframes risingStream {
+  0% { opacity: 0; transform: translateY(0) scale(1); }
+  50% { opacity: 0.3; }
+  100% { opacity: 0; transform: translateY(-30px) scale(2); }
+}
+
+.rising-steam {
+  animation: risingStream 3s ease-out infinite;
+}
+
+/* NPC speech bubble pop */
+@keyframes speechPop {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.2); }
+}
+
+/* Dialogue appear animation */
+@keyframes dialogueSlideUp {
+  0% { transform: translateY(20px); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+
+.dialogue-enter {
+  animation: dialogueSlideUp 0.3s ease-out;
+}
