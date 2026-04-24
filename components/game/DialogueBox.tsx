@@ -131,6 +131,7 @@ export function DialogueBox({ npcId, onClose }: DialogueBoxProps) {
 
   // Save conversation summary and close
   const handleClose = useCallback(() => {
+    speechSynthesis.cancel()
     if (messages.length > 2) {
       fetch("/api/summarize-conversation", {
         method: "POST",
@@ -157,6 +158,32 @@ export function DialogueBox({ npcId, onClose }: DialogueBoxProps) {
     window.addEventListener("keydown", handleKey)
     return () => window.removeEventListener("keydown", handleKey)
   }, [handleClose])
+
+  // TTS: speak NPC messages when streaming finishes
+  const speak = useCallback((text: string) => {
+    if (!ttsEnabled || !text) return
+    speechSynthesis.cancel()
+    const utterance = new SpeechSynthesisUtterance(text)
+    utterance.lang = gameState?.language === "en-to-es" ? "es-ES" : "en-US"
+    utterance.rate = 0.85
+    utterance.pitch = 1.0
+    speechSynthesis.speak(utterance)
+  }, [ttsEnabled, gameState?.language])
+
+  useEffect(() => {
+    if (isLoading) return
+    const lastAssistant = [...messages].reverse().find(m => m.role === "assistant")
+    if (!lastAssistant) return
+    if (lastAssistant.id === lastSpokenIdRef.current) return
+    lastSpokenIdRef.current = lastAssistant.id
+    const text = getMessageText(lastAssistant)
+    if (text) speak(text)
+  }, [messages, isLoading, speak])
+
+  // Stop TTS on unmount
+  useEffect(() => {
+    return () => { speechSynthesis.cancel() }
+  }, [])
 
   // Speech recognition setup
   const hasSpeechSupport = typeof window !== "undefined" && ("SpeechRecognition" in window || "webkitSpeechRecognition" in window)
@@ -247,6 +274,20 @@ export function DialogueBox({ npcId, onClose }: DialogueBoxProps) {
                   {npc.role.es}
                 </div>
               </div>
+              <button
+                onClick={() => {
+                  speechSynthesis.cancel()
+                  setTtsEnabled(prev => !prev)
+                }}
+                className={`font-pixel text-[8px] border px-2 py-1 transition-colors ${
+                  ttsEnabled
+                    ? "text-cyan-400 border-cyan-400 hover:text-white hover:border-white"
+                    : "text-gray-600 border-gray-600 hover:text-gray-400 hover:border-gray-400"
+                }`}
+                title={ttsEnabled ? "Mute TTS" : "Unmute TTS"}
+              >
+                {ttsEnabled ? "VOZ" : "MUTE"}
+              </button>
               <button
                 onClick={handleClose}
                 className="text-gray-500 hover:text-white font-pixel text-[8px] border border-gray-600 hover:border-white px-2 py-1 transition-colors"
