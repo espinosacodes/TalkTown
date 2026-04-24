@@ -39,6 +39,18 @@ const tables = [
     ],
     BillingMode: "PAY_PER_REQUEST" as const,
   },
+  {
+    TableName: "language-quest-gifts",
+    KeySchema: [
+      { AttributeName: "recipientId", KeyType: "HASH" as const },
+      { AttributeName: "giftId", KeyType: "RANGE" as const },
+    ],
+    AttributeDefinitions: [
+      { AttributeName: "recipientId", AttributeType: "S" as const },
+      { AttributeName: "giftId", AttributeType: "S" as const },
+    ],
+    BillingMode: "PAY_PER_REQUEST" as const,
+  },
 ]
 
 export async function POST() {

@@ -1,6 +1,46 @@
-export type Language = "es" | "ja"
+export type Language = "es"
+export type LearningDirection = "en-to-es" | "es-to-en"
 export type PlayerLevel = "beginner" | "elementary" | "intermediate"
-export type AreaId = "inn" | "fish_market" | "fruit_stand" | "bakery" | "town_hall" | "garden" | "town_square" | "shop"
+export type AreaId = "inn" | "fish_market" | "fruit_stand" | "bakery" | "town_hall" | "garden" | "town_square" | "shop" | "forest" | "beach" | "shrine" | "school" | "hot_spring" | "farm"
+export type AnimalType = "cat" | "bear" | "fox" | "owl" | "lion" | "rabbit" | "turtle" | "tanuki"
+  | "deer" | "wolf" | "frog" | "otter" | "crane" | "dog" | "monkey" | "horse" | "pig" | "penguin" | "mouse"
+export type MiniGameType = "word_matching" | "flashcard_review" | "fishing"
+
+export interface FriendshipLevel {
+  npcId: string
+  points: number
+  level: number
+  giftsGiven: number
+}
+
+export interface InventoryItem {
+  id: string
+  name: Record<Language, string>
+  category: "food" | "gift" | "decoration" | "tool"
+  quantity: number
+}
+
+export interface CraftRecipe {
+  id: string
+  name: Record<Language, string>
+  requiredWords: string[]
+  resultItemId: string
+}
+
+export interface JournalEntry {
+  id: string
+  date: number
+  wordsLearned: string[]
+  npcsVisited: string[]
+}
+
+export interface ConversationSummary {
+  sessionNpcId: string   // "{userId}#{npcId}"
+  timestamp: number
+  summary: string        // 1-3 sentence AI summary
+  topicsDiscussed: string[]
+  wordsLearned: string[]
+}
 
 export interface Position {
   x: number
@@ -9,7 +49,7 @@ export interface Position {
 
 export interface VocabularyWord {
   word: string
-  reading: string // hiragana reading for kanji
+  reading: string
   translation: string
   timesUsed: number
   mastery: number
@@ -53,8 +93,8 @@ export const SHOP_ITEMS: ShopItem[] = [
   {
     id: "outfit_warrior",
     type: "outfit",
-    name: { es: "Traje de Guerrero", ja: "戦士の服" },
-    description: { es: "Un traje rojo de batalla", ja: "赤い戦闘服" },
+    name: { es: "Traje de Guerrero" },
+    description: { es: "Un traje rojo de batalla" },
     price: 5,
     color: "#DC2626",
     unlocked: false,
@@ -62,8 +102,8 @@ export const SHOP_ITEMS: ShopItem[] = [
   {
     id: "outfit_wizard",
     type: "outfit",
-    name: { es: "Tunica de Mago", ja: "魔法使いのローブ" },
-    description: { es: "Una tunica azul mistica", ja: "神秘的な青いローブ" },
+    name: { es: "Tunica de Mago" },
+    description: { es: "Una tunica azul mistica" },
     price: 10,
     color: "#2563EB",
     unlocked: false,
@@ -71,8 +111,8 @@ export const SHOP_ITEMS: ShopItem[] = [
   {
     id: "outfit_knight",
     type: "outfit",
-    name: { es: "Armadura de Caballero", ja: "騎士の鎧" },
-    description: { es: "Armadura plateada brillante", ja: "輝く銀の鎧" },
+    name: { es: "Armadura de Caballero" },
+    description: { es: "Armadura plateada brillante" },
     price: 15,
     color: "#9CA3AF",
     unlocked: false,
@@ -80,8 +120,8 @@ export const SHOP_ITEMS: ShopItem[] = [
   {
     id: "outfit_royal",
     type: "outfit",
-    name: { es: "Vestido Real", ja: "王族の衣装" },
-    description: { es: "Elegante vestido purpura", ja: "エレガントな紫の衣装" },
+    name: { es: "Vestido Real" },
+    description: { es: "Elegante vestido purpura" },
     price: 20,
     color: "#7C3AED",
     unlocked: false,
@@ -90,8 +130,8 @@ export const SHOP_ITEMS: ShopItem[] = [
   {
     id: "hat_none",
     type: "hat",
-    name: { es: "Sin Sombrero", ja: "帽子なし" },
-    description: { es: "Tu cabello natural", ja: "自然な髪" },
+    name: { es: "Sin Sombrero" },
+    description: { es: "Tu cabello natural" },
     price: 0,
     color: "transparent",
     unlocked: true,
@@ -99,8 +139,8 @@ export const SHOP_ITEMS: ShopItem[] = [
   {
     id: "hat_bandana",
     type: "hat",
-    name: { es: "Bandana", ja: "バンダナ" },
-    description: { es: "Una bandana roja clasica", ja: "クラシックな赤いバンダナ" },
+    name: { es: "Bandana" },
+    description: { es: "Una bandana roja clasica" },
     price: 3,
     color: "#EF4444",
     unlocked: false,
@@ -108,8 +148,8 @@ export const SHOP_ITEMS: ShopItem[] = [
   {
     id: "hat_wizard",
     type: "hat",
-    name: { es: "Sombrero de Mago", ja: "魔法使いの帽子" },
-    description: { es: "Un sombrero puntiagudo", ja: "とがった帽子" },
+    name: { es: "Sombrero de Mago" },
+    description: { es: "Un sombrero puntiagudo" },
     price: 8,
     color: "#1E40AF",
     unlocked: false,
@@ -117,8 +157,8 @@ export const SHOP_ITEMS: ShopItem[] = [
   {
     id: "hat_crown",
     type: "hat",
-    name: { es: "Corona Dorada", ja: "黄金の王冠" },
-    description: { es: "Para la realeza", ja: "王族のための" },
+    name: { es: "Corona Dorada" },
+    description: { es: "Para la realeza" },
     price: 25,
     color: "#F59E0B",
     unlocked: false,
@@ -126,8 +166,8 @@ export const SHOP_ITEMS: ShopItem[] = [
   {
     id: "hat_cat_ears",
     type: "hat",
-    name: { es: "Orejas de Gato", ja: "猫耳" },
-    description: { es: "Kawaii!", ja: "かわいい!" },
+    name: { es: "Orejas de Gato" },
+    description: { es: "Que lindo!" },
     price: 12,
     color: "#FCD34D",
     unlocked: false,
@@ -135,8 +175,8 @@ export const SHOP_ITEMS: ShopItem[] = [
   {
     id: "hat_flower",
     type: "hat",
-    name: { es: "Corona de Flores", ja: "花の冠" },
-    description: { es: "Flores frescas del jardin", ja: "庭からの新鮮な花" },
+    name: { es: "Corona de Flores" },
+    description: { es: "Flores frescas del jardin" },
     price: 6,
     color: "#F472B6",
     unlocked: false,
@@ -145,33 +185,40 @@ export const SHOP_ITEMS: ShopItem[] = [
 
 export interface GameState {
   sessionId: string
-  language: Language
+  language: LearningDirection
   playerLevel: PlayerLevel
   playerName: string
-  
+
   // Position
   currentArea: AreaId
   playerPosition: Position
-  
+
   // Progress
   questsCompleted: string[]
   currentQuest: Quest | null
-  
+
   // Language learning
   vocabularyLearned: VocabularyWord[]
   grammarPatternsUsed: string[]
   conversationHistory: Record<string, Message[]>
-  
+
   // Stats
   totalWordsSpoken: number
   correctUsages: number
   mistakesCorrected: number
-  
+
   // Customization
   ownedItems: string[]
   currentOutfit: string
   currentHat: string
   gold: number // Currency earned through conversations
+
+  // Animal Crossing features
+  friendships: FriendshipLevel[]
+  inventory: InventoryItem[]
+  craftedItems: string[]
+  miniGameHighScores: Record<MiniGameType, number>
+  journalEntries: JournalEntry[]
 }
 
 export interface NPCProfile {
@@ -188,10 +235,18 @@ export interface NPCProfile {
   position: Position
   questId: string | null
   spriteColors: {
-    hair: string
+    animalType: AnimalType
+    fur: string
+    furDark: string
     body: string
     accent: string
-    skin: string
+    belly: string
+    nose: string
+  }
+  giftPreferences?: {
+    loved: string[]
+    liked: string[]
+    disliked: string[]
   }
 }
 
@@ -270,9 +325,9 @@ export const QUESTS: Quest[] = [
   },
 ]
 
-export function createInitialGameState(language: Language, playerName: string): GameState {
+export function createInitialGameState(language: LearningDirection, playerName: string, userId: string): GameState {
   return {
-    sessionId: crypto.randomUUID(),
+    sessionId: userId,
     language,
     playerLevel: "beginner",
     playerName,
@@ -290,5 +345,10 @@ export function createInitialGameState(language: Language, playerName: string): 
     currentOutfit: "default",
     currentHat: "hat_none",
     gold: 0,
+    friendships: [],
+    inventory: [],
+    craftedItems: [],
+    miniGameHighScores: { word_matching: 0, flashcard_review: 0, fishing: 0 },
+    journalEntries: [],
   }
 }

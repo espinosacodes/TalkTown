@@ -289,3 +289,72 @@
 .dialogue-enter {
   animation: dialogueSlideUp 0.3s ease-out;
 }
+
+/* Animal tail swish */
+@keyframes tailSwish {
+  0%, 100% { transform: rotate(-15deg); }
+  50% { transform: rotate(15deg); }
+}
+
+.tail-swish {
+  animation: tailSwish 1.5s ease-in-out infinite;
+  transform-origin: left center;
+}
+
+/* Rabbit ear twitch */
+@keyframes earTwitch {
+  0%, 80%, 100% { transform: scaleY(1); }
+  10% { transform: scaleY(0.85); }
+  20% { transform: scaleY(1.05); }
+}
+
+.ear-twitch {
+  animation: earTwitch 0.4s ease-out;
+  transform-origin: bottom center;
+}
+
+/* Turtle shell bob */
+@keyframes shellBob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-1px); }
+}
+
+.shell-bob {
+  animation: shellBob 3s ease-in-out infinite;
+}
+
+/* Cherry blossom falling */
+@keyframes cherryBlossomFall {
+  0% { top: -5%; opacity: 0; transform: translateX(0) rotate(0deg); }
+  10% { opacity: 0.7; }
+  100% { top: 100%; opacity: 0; transform: translateX(40px) rotate(720deg); }
+}
+
+.cherry-blossom-fall {
+  animation: cherryBlossomFall 7s ease-in-out infinite;
+}
+
+/* Firefly floating */
+@keyframes fireflyFloat {
+  0% { opacity: 0; transform: translate(0, 0); }
+  25% { opacity: 0.8; transform: translate(10px, -8px); }
+  50% { opacity: 0.3; transform: translate(-5px, -15px); }
+  75% { opacity: 0.9; transform: translate(8px, -5px); }
+  100% { opacity: 0; transform: translate(0, 0); }
+}
+
+.firefly-float {
+  animation: fireflyFloat 4s ease-in-out infinite;
+}
+
+/* Wave crash */
+@keyframes waveCrash {
+  0%, 100% { opacity: 0; transform: translateX(0) scaleX(1); }
+  30% { opacity: 0.5; }
+  50% { opacity: 0.8; transform: translateX(5px) scaleX(1.5); }
+  70% { opacity: 0.3; }
+}
+
+.wave-crash {
+  animation: waveCrash 3s ease-in-out infinite;
+}

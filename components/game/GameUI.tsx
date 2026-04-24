@@ -1,13 +1,19 @@
 "use client"
 
-import { useState, useCallback } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useGame } from "@/lib/game-context"
 import { GameCanvas } from "./GameCanvas"
 import { NPCWorld } from "./NPCWorld"
 import { DialogueBox } from "./DialogueBox"
 import { Vocabulary } from "./Vocabulary"
 import { HUD } from "./HUD"
-import type { NPCProfile, VocabularyWord } from "@/lib/game-state"
+import { CraftingScreen } from "./CraftingScreen"
+import { JournalScreen } from "./JournalScreen"
+import { SocialTab } from "./SocialTab"
+import { MiniGameWordMatch } from "./MiniGameWordMatch"
+import { MiniGameFlashcard } from "./MiniGameFlashcard"
+import { MiniGameFishing } from "./MiniGameFishing"
+import type { NPCProfile, MiniGameType } from "@/lib/game-state"
 import { SHOP_ITEMS } from "@/lib/game-state"
 
 // Simple player avatar component
@@ -40,7 +46,6 @@ function PlayerAvatar({ outfit, hat }: { outfit: string; hat: string }) {
 export function GameUI() {
   const {
     gameState,
-    addVocabulary,
     shopItems,
     buyItem,
     equipItem,
@@ -49,38 +54,59 @@ export function GameUI() {
     setActiveNpcId,
   } = useGame()
 
+  const [activePanel, setActivePanel] = useState<"world" | "map" | "vocab" | "shop" | "social">("world")
+  const [showCrafting, setShowCrafting] = useState(false)
+  const [showJournal, setShowJournal] = useState(false)
+  const [showInventory, setShowInventory] = useState(false)
+  const [activeMiniGame, setActiveMiniGame] = useState<MiniGameType | null>(null)
+  const [unclaimedGifts, setUnclaimedGifts] = useState<Array<{ recipientId: string; giftId: string; senderId: string; senderName: string; type: "item" | "gold"; itemId?: string; itemName?: string; amount?: number; createdAt: number; claimed: boolean }>>([])
+
+  const fetchGifts = useCallback(async () => {
+    try {
+      const res = await fetch("/api/gifts")
+      if (res.ok) {
+        const data = await res.json()
+        setUnclaimedGifts(data.gifts || [])
+      }
+    } catch {
+      // ignore
+    }
+  }, [])
+
+  // Poll gifts every 30s
+  useEffect(() => {
+    fetchGifts()
+    const interval = setInterval(fetchGifts, 30000)
+    return () => clearInterval(interval)
+  }, [fetchGifts])
+
   if (!gameState) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="text-yellow-400 font-pixel text-xs">* ロード中... / Loading...</div>
+        <div className="text-yellow-400 font-pixel text-xs">* Cargando... / Loading...</div>
       </div>
     )
   }
-
-  const [activePanel, setActivePanel] = useState<"world" | "map" | "vocab" | "shop">("world")
-  const [isTransitioning, setIsTransitioning] = useState(false)
-
-  const handleWordLearned = useCallback((word: { original: string; reading?: string; translation: string }) => {
-    const vocabWord: VocabularyWord = {
-      word: word.original,
-      reading: word.reading || "",
-      translation: word.translation,
-      timesUsed: 1,
-      mastery: 10,
-      category: "conversation",
-    }
-    addVocabulary(vocabWord)
-  }, [addVocabulary])
 
   const handleTalkToNPCFromMap = async (npc: NPCProfile) => {
     setActiveNpcId(npc.id)
     setActivePanel("world")
   }
 
+  const handleStartMiniGame = (type: MiniGameType) => {
+    setShowJournal(false)
+    setActiveMiniGame(type)
+  }
+
   return (
     <div className="min-h-screen bg-black">
       {/* HUD Overlay */}
-      <HUD />
+      <HUD
+        onOpenJournal={() => setShowJournal(true)}
+        onOpenCrafting={() => setShowCrafting(true)}
+        onOpenInventory={() => setShowInventory(true)}
+        pendingGifts={unclaimedGifts.length}
+      />
 
       {/* Navigation Tabs */}
       <div className="fixed top-0 left-0 right-0 z-30 bg-black/95 border-b-2 border-white/30">
@@ -94,7 +120,7 @@ export function GameUI() {
                   : "text-gray-500 border-transparent hover:text-white"
               }`}
             >
-              冒険 / WORLD
+              MUNDO / WORLD
             </button>
             <button
               onClick={() => setActivePanel("map")}
@@ -104,7 +130,7 @@ export function GameUI() {
                   : "text-gray-500 border-transparent hover:text-white"
               }`}
             >
-              地図 / MAP
+              MAPA / MAP
             </button>
             <button
               onClick={() => setActivePanel("vocab")}
@@ -114,7 +140,7 @@ export function GameUI() {
                   : "text-gray-500 border-transparent hover:text-white"
               }`}
             >
-              単語 / WORDS ({gameState.vocabularyLearned.length})
+              PALABRAS / WORDS ({gameState.vocabularyLearned.length})
             </button>
             <button
               onClick={() => setActivePanel("shop")}
@@ -124,7 +150,22 @@ export function GameUI() {
                   : "text-gray-500 border-transparent hover:text-white"
               }`}
             >
-              店 / SHOP
+              TIENDA / SHOP
+            </button>
+            <button
+              onClick={() => setActivePanel("social")}
+              className={`flex-1 py-3 font-pixel text-[10px] border-b-2 transition-colors relative ${
+                activePanel === "social"
+                  ? "text-violet-400 border-violet-400"
+                  : "text-gray-500 border-transparent hover:text-white"
+              }`}
+            >
+              AMIGOS
+              {unclaimedGifts.length > 0 && (
+                <span className="absolute top-1 ml-0.5 w-3 h-3 bg-red-500 rounded-full flex items-center justify-center text-white font-pixel text-[5px]">
+                  {unclaimedGifts.length}
+                </span>
+              )}
             </button>
           </div>
         </div>
@@ -161,13 +202,10 @@ export function GameUI() {
             <div className="undertale-box">
               <div className="bg-black p-4">
                 <div className="text-yellow-400 font-pixel text-xs mb-4">
-                  * ファッションショップへようこそ！
-                </div>
-                <div className="text-gray-500 font-pixel text-[8px] mb-1">
-                  Welcome to the Fashion Shop!
+                  * Bienvenido a la tienda de moda!
                 </div>
                 <div className="text-gray-600 font-pixel text-[8px] mb-4">
-                  学んだ単語で服を買おう / Buy outfits with words you learned
+                  Compra ropa con las palabras aprendidas / Buy outfits with words learned
                 </div>
 
                 <div className="space-y-3">
@@ -197,23 +235,21 @@ export function GameUI() {
                           />
                           <div className="flex-1">
                             <div className="text-white font-pixel text-xs">
-                              {item.name.ja} / {item.name.es}
-                              {equipped && <span className="ml-2 text-green-400">[装備中]</span>}
-                              {owned && !equipped && <span className="ml-2 text-cyan-400">[所持]</span>}
+                              {item.name.es}
+                              {equipped && <span className="ml-2 text-green-400">[Equipado]</span>}
+                              {owned && !equipped && <span className="ml-2 text-cyan-400">[Owned]</span>}
                             </div>
                             <div className="text-gray-500 font-pixel text-[8px] mt-1">
-                              {item.description.ja}
+                              {item.description.es}
                             </div>
-
                             {!owned && (
                               <div className="flex flex-wrap gap-2 mt-2">
                                 <span className={`font-pixel text-[8px] ${canAfford(item.price) ? "text-yellow-400" : "text-red-400"}`}>
-                                  {item.price} 単語必要 / {item.price} words needed
+                                  {item.price} palabras / {item.price} words needed
                                 </span>
                               </div>
                             )}
                           </div>
-
                           {owned ? (
                             <button
                               onClick={() => equipItem(item.id, item.type as "outfit" | "hat")}
@@ -224,7 +260,7 @@ export function GameUI() {
                                   : "border-cyan-400 text-cyan-400 hover:bg-cyan-400/10"
                               }`}
                             >
-                              {equipped ? "装備中" : "装備"}
+                              {equipped ? "---" : "Equipar"}
                             </button>
                           ) : (
                             <button
@@ -236,7 +272,7 @@ export function GameUI() {
                                   : "border-gray-600 text-gray-500 cursor-not-allowed"
                               }`}
                             >
-                              購入
+                              Comprar
                             </button>
                           )}
                         </div>
@@ -247,17 +283,92 @@ export function GameUI() {
               </div>
             </div>
           )}
+
+          {activePanel === "social" && (
+            <SocialTab
+              currentUserId={gameState.sessionId}
+              unclaimedGifts={unclaimedGifts}
+              onGiftsChanged={fetchGifts}
+            />
+          )}
         </div>
       </div>
 
-      {/* Dialogue Box - shows when talking to NPC */}
+      {/* Dialogue Box */}
       {activeNpcId && (
         <DialogueBox
           npcId={activeNpcId}
           onClose={() => setActiveNpcId(null)}
-          onWordLearned={handleWordLearned}
         />
       )}
+
+      {/* Modal Overlays */}
+      {showCrafting && <CraftingScreen onClose={() => setShowCrafting(false)} />}
+      {showJournal && (
+        <JournalScreen
+          onClose={() => setShowJournal(false)}
+          onStartMiniGame={handleStartMiniGame}
+        />
+      )}
+      {showInventory && (
+        <InventoryScreen
+          onClose={() => setShowInventory(false)}
+        />
+      )}
+
+      {/* Mini-games */}
+      {activeMiniGame === "word_matching" && (
+        <MiniGameWordMatch onClose={() => setActiveMiniGame(null)} />
+      )}
+      {activeMiniGame === "flashcard_review" && (
+        <MiniGameFlashcard onClose={() => setActiveMiniGame(null)} />
+      )}
+      {activeMiniGame === "fishing" && (
+        <MiniGameFishing onClose={() => setActiveMiniGame(null)} />
+      )}
+    </div>
+  )
+}
+
+// Simple inventory screen
+function InventoryScreen({ onClose }: { onClose: () => void }) {
+  const { gameState } = useGame()
+  if (!gameState) return null
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80" onClick={onClose}>
+      <div className="undertale-box max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()}>
+        <div className="bg-black p-4">
+          <div className="flex items-center justify-between mb-3 pb-2 border-b border-white/20">
+            <h2 className="text-green-400 font-pixel text-xs">Inventario / INVENTORY</h2>
+            <button
+              onClick={onClose}
+              className="text-gray-500 hover:text-white font-pixel text-[8px] border border-gray-600 hover:border-white px-2 py-1 transition-colors"
+            >
+              [ESC]
+            </button>
+          </div>
+
+          {gameState.inventory.length === 0 ? (
+            <div className="text-center py-8">
+              <div className="text-gray-500 font-pixel text-[10px]">* No tienes objetos</div>
+              <div className="text-gray-600 font-pixel text-[8px] mt-1">No items yet</div>
+            </div>
+          ) : (
+            <div className="space-y-2 max-h-48 overflow-y-auto game-scrollbar">
+              {gameState.inventory.map((item) => (
+                <div key={item.id} className="p-2 border border-white/10 flex items-center justify-between">
+                  <div>
+                    <div className="text-white font-pixel text-[10px]">{item.name.es}</div>
+                    <div className="text-gray-500 font-pixel text-[6px]">{item.category}</div>
+                  </div>
+                  <div className="text-yellow-400 font-pixel text-[10px]">x{item.quantity}</div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   )
 }

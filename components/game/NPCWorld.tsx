@@ -5,24 +5,15 @@ import type { NPCProfile, AreaId } from "@/lib/game-state"
 import { useGame } from "@/lib/game-context"
 import { NPC_PROFILES } from "@/lib/npc-profiles"
 import { AREA_MAPS } from "@/lib/tile-map"
+import { AnimalAvatar } from "./AnimalAvatar"
 
 interface NPCWorldProps {
   onTalkToNPC: (npc: NPCProfile) => void
   isDialogueActive: boolean
 }
 
-function NPCAvatar({ colors }: { colors: { hair: string; body: string; accent: string; skin: string } }) {
-  return (
-    <div className="relative w-full h-full flex items-center justify-center">
-      <div className="w-8 h-10 rounded-t-sm" style={{ backgroundColor: colors.body }} />
-      <div className="absolute top-1 w-6 h-6 rounded-full" style={{ backgroundColor: colors.skin }} />
-      <div className="absolute top-0 w-6 h-3 rounded-t-sm" style={{ backgroundColor: colors.hair }} />
-    </div>
-  )
-}
-
 // Group NPCs by area
-const AREA_ORDER: AreaId[] = ["town_square", "inn", "fish_market", "fruit_stand", "bakery", "town_hall", "garden", "shop"]
+const AREA_ORDER: AreaId[] = ["town_square", "inn", "fish_market", "fruit_stand", "bakery", "town_hall", "garden", "shop", "forest", "beach", "shrine", "school", "hot_spring", "farm"]
 
 export function NPCWorld({ onTalkToNPC, isDialogueActive }: NPCWorldProps) {
   const { gameState } = useGame()
@@ -37,10 +28,10 @@ export function NPCWorld({ onTalkToNPC, isDialogueActive }: NPCWorldProps) {
       {/* Area Header */}
       <div className="text-center pb-4 border-b border-white/20">
         <h2 className="text-yellow-400 font-pixel text-sm">
-          {areaMap.name.ja} / {areaMap.name.es}
+          {areaMap.name.es}
         </h2>
         <p className="text-gray-500 font-pixel text-[8px] mt-1">
-          * NPCをクリックして会話 / Click an NPC to talk
+          * Haz clic en un NPC para hablar / Click an NPC to talk
         </p>
       </div>
 
@@ -61,7 +52,7 @@ export function NPCWorld({ onTalkToNPC, isDialogueActive }: NPCWorldProps) {
                   : "border-white/20 text-gray-400 hover:border-white hover:text-white"
               } ${isDialogueActive ? "opacity-50 cursor-not-allowed" : ""}`}
             >
-              {area.name.ja.split("の")[0] || area.name.ja} {npcCount > 0 && `(${npcCount})`}
+              {area.name.es} {npcCount > 0 && `(${npcCount})`}
             </button>
           )
         })}
@@ -87,21 +78,30 @@ export function NPCWorld({ onTalkToNPC, isDialogueActive }: NPCWorldProps) {
           >
             {/* NPC Sprite */}
             <div className="w-12 h-12 mx-auto mb-3 pixel-art animate-bounce-slow">
-              <NPCAvatar colors={npc.spriteColors} />
+              <AnimalAvatar
+                animalType={npc.spriteColors.animalType}
+                fur={npc.spriteColors.fur}
+                furDark={npc.spriteColors.furDark}
+                belly={npc.spriteColors.belly}
+                nose={npc.spriteColors.nose}
+                accent={npc.spriteColors.accent}
+                body={npc.spriteColors.body}
+                size="md"
+              />
             </div>
 
             {/* NPC Info - bilingual */}
             <div className="text-white font-pixel text-[10px]">
-              {npc.name.ja} / {npc.name.es}
+              {npc.name.es}
             </div>
             <div className="text-gray-500 font-pixel text-[8px] mt-1">
-              {npc.role.ja} / {npc.role.es}
+              {npc.role.es}
             </div>
 
             {/* Talk Prompt */}
             {hoveredNPC === npc.id && !isDialogueActive && (
               <div className="mt-2 text-yellow-400 font-pixel text-[8px] animate-pulse">
-                [ 話す / TALK ]
+                [ HABLAR / TALK ]
               </div>
             )}
           </button>
@@ -110,7 +110,7 @@ export function NPCWorld({ onTalkToNPC, isDialogueActive }: NPCWorldProps) {
         {npcsInArea.length === 0 && (
           <div className="col-span-full text-center py-8">
             <div className="text-gray-500 font-pixel text-[10px]">
-              * このエリアにはNPCがいません
+              * No hay NPCs en esta area
             </div>
             <div className="text-gray-600 font-pixel text-[8px] mt-1">
               No NPCs in this area

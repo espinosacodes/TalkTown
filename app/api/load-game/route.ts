@@ -1,10 +1,15 @@
 import { dynamodb, TABLES } from "@/lib/dynamodb"
 import { GetCommand, QueryCommand } from "@aws-sdk/lib-dynamodb"
+import { auth0 } from "@/lib/auth0"
 
-export async function POST(req: Request) {
+export async function POST() {
+  const session = await auth0.getSession()
+  if (!session) {
+    return Response.json({ error: "Unauthorized" }, { status: 401 })
+  }
+  const sessionId = session.user.sub
+
   try {
-    const { sessionId } = await req.json()
-
     // Load session
     const sessionResult = await dynamodb.send(new GetCommand({
       TableName: TABLES.sessions,
@@ -15,7 +20,7 @@ export async function POST(req: Request) {
       return Response.json({ error: "Session not found" }, { status: 404 })
     }
 
-    const session = sessionResult.Item
+    const saved = sessionResult.Item
 
     // Load vocabulary
     const vocabResult = await dynamodb.send(new QueryCommand({
@@ -34,24 +39,29 @@ export async function POST(req: Request) {
     }))
 
     const gameState = {
-      sessionId: session.sessionId,
-      language: session.language,
-      playerLevel: session.playerLevel,
-      playerName: session.playerName,
-      currentArea: session.currentArea,
-      playerPosition: session.playerPosition,
-      questsCompleted: session.questsCompleted || [],
-      currentQuest: session.currentQuest || null,
+      sessionId: saved.sessionId,
+      language: saved.language,
+      playerLevel: saved.playerLevel,
+      playerName: saved.playerName,
+      currentArea: saved.currentArea,
+      playerPosition: saved.playerPosition,
+      questsCompleted: saved.questsCompleted || [],
+      currentQuest: saved.currentQuest || null,
       vocabularyLearned,
-      grammarPatternsUsed: session.grammarPatternsUsed || [],
+      grammarPatternsUsed: saved.grammarPatternsUsed || [],
       conversationHistory: {},
-      totalWordsSpoken: session.totalWordsSpoken || 0,
-      correctUsages: session.correctUsages || 0,
-      mistakesCorrected: session.mistakesCorrected || 0,
-      ownedItems: session.ownedItems || ["hat_none"],
-      currentOutfit: session.currentOutfit || "default",
-      currentHat: session.currentHat || "hat_none",
-      gold: session.gold || 0,
+      totalWordsSpoken: saved.totalWordsSpoken || 0,
+      correctUsages: saved.correctUsages || 0,
+      mistakesCorrected: saved.mistakesCorrected || 0,
+      ownedItems: saved.ownedItems || ["hat_none"],
+      currentOutfit: saved.currentOutfit || "default",
+      currentHat: saved.currentHat || "hat_none",
+      gold: saved.gold || 0,
+      friendships: saved.friendships || [],
+      inventory: saved.inventory || [],
+      craftedItems: saved.craftedItems || [],
+      miniGameHighScores: saved.miniGameHighScores || { word_matching: 0, flashcard_review: 0, fishing: 0 },
+      journalEntries: saved.journalEntries || [],
     }
 
     return Response.json({ gameState })

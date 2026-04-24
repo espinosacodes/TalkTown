@@ -1,17 +1,17 @@
 "use client"
 
 import { createContext, useContext, useState, useCallback, useEffect, useRef, type ReactNode } from "react"
-import type { GameState, Language, AreaId, Quest, VocabularyWord, Message, ShopItem } from "./game-state"
+import type { GameState, LearningDirection, AreaId, Quest, VocabularyWord, Message, ShopItem, InventoryItem, JournalEntry, MiniGameType } from "./game-state"
 import { createInitialGameState, QUESTS, SHOP_ITEMS } from "./game-state"
 import { checkForExit, isTileWalkable } from "./tile-map"
 
 interface GameContextType {
   gameState: GameState | null
   isGameStarted: boolean
-  startGame: (language: Language, playerName: string) => void
-  loadSavedGame: (sessionId: string) => Promise<boolean>
+  startGame: (language: LearningDirection, playerName: string) => void
+  loadSavedGame: () => Promise<boolean>
   hasSavedGame: boolean
-  savedSessionId: string | null
+  setUserId: (id: string) => void
   movePlayer: (dx: number, dy: number) => boolean
   changeArea: (areaId: AreaId, x: number, y: number) => void
   addVocabulary: (word: VocabularyWord) => void
@@ -29,6 +29,16 @@ interface GameContextType {
   canAfford: (price: number) => boolean
   isShopOpen: boolean
   setIsShopOpen: (open: boolean) => void
+  // Friendship
+  updateFriendship: (npcId: string, points: number) => void
+  // Inventory
+  addToInventory: (item: InventoryItem) => void
+  removeFromInventory: (itemId: string) => void
+  // Journal
+  addJournalEntry: (entry: JournalEntry) => void
+  // Social / Gifts
+  sendGift: (recipientId: string, type: "item" | "gold", itemId?: string, amount?: number) => Promise<boolean>
+  claimGift: (giftId: string) => Promise<boolean>
 }
 
 const GameContext = createContext<GameContextType | null>(null)
@@ -38,17 +48,28 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const [activeNpcId, setActiveNpcId] = useState<string | null>(null)
   const [isShopOpen, setIsShopOpen] = useState(false)
   const [hasSavedGame, setHasSavedGame] = useState(false)
-  const [savedSessionId, setSavedSessionId] = useState<string | null>(null)
+  const [userId, setUserId] = useState<string | null>(null)
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
-  // Check for saved session on mount
+  // Check DynamoDB for existing save when userId is set
   useEffect(() => {
-    const sid = localStorage.getItem("language-quest-session-id")
-    if (sid) {
-      setHasSavedGame(true)
-      setSavedSessionId(sid)
+    if (!userId) return
+    let cancelled = false
+    async function checkSave() {
+      try {
+        const res = await fetch("/api/load-game", { method: "POST" })
+        if (!res.ok) return
+        const { gameState: loaded } = await res.json()
+        if (!cancelled && loaded) {
+          setHasSavedGame(true)
+        }
+      } catch {
+        // ignore
+      }
     }
-  }, [])
+    checkSave()
+    return () => { cancelled = true }
+  }, [userId])
 
   // Debounced auto-save
   const saveGame = useCallback(async (state: GameState) => {
@@ -75,21 +96,16 @@ export function GameProvider({ children }: { children: ReactNode }) {
     }
   }, [gameState, saveGame])
 
-  const startGame = useCallback((language: Language, playerName: string) => {
-    const state = createInitialGameState(language, playerName)
+  const startGame = useCallback((language: LearningDirection, playerName: string) => {
+    if (!userId) return
+    const state = createInitialGameState(language, playerName, userId)
     setGameState(state)
-    localStorage.setItem("language-quest-session-id", state.sessionId)
     setHasSavedGame(true)
-    setSavedSessionId(state.sessionId)
-  }, [])
+  }, [userId])
 
-  const loadSavedGame = useCallback(async (sessionId: string): Promise<boolean> => {
+  const loadSavedGame = useCallback(async (): Promise<boolean> => {
     try {
-      const res = await fetch("/api/load-game", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sessionId }),
-      })
+      const res = await fetch("/api/load-game", { method: "POST" })
       if (!res.ok) return false
       const { gameState: loaded } = await res.json()
       if (loaded) {
@@ -269,6 +285,151 @@ export function GameProvider({ children }: { children: ReactNode }) {
     })
   }, [])
 
+  const updateFriendship = useCallback((npcId: string, points: number) => {
+    setGameState((prev) => {
+      if (!prev) return null
+      const existing = prev.friendships.find((f) => f.npcId === npcId)
+      if (existing) {
+        const newPoints = existing.points + points
+        const newLevel = Math.min(5, Math.floor(newPoints / 10))
+        return {
+          ...prev,
+          friendships: prev.friendships.map((f) =>
+            f.npcId === npcId
+              ? { ...f, points: newPoints, level: newLevel }
+              : f
+          ),
+        }
+      }
+      return {
+        ...prev,
+        friendships: [
+          ...prev.friendships,
+          { npcId, points: Math.max(0, points), level: Math.min(5, Math.floor(Math.max(0, points) / 10)), giftsGiven: 0 },
+        ],
+      }
+    })
+  }, [])
+
+  const addToInventory = useCallback((item: InventoryItem) => {
+    setGameState((prev) => {
+      if (!prev) return null
+      const existing = prev.inventory.find((i) => i.id === item.id)
+      if (existing) {
+        return {
+          ...prev,
+          inventory: prev.inventory.map((i) =>
+            i.id === item.id ? { ...i, quantity: i.quantity + item.quantity } : i
+          ),
+        }
+      }
+      return { ...prev, inventory: [...prev.inventory, item] }
+    })
+  }, [])
+
+  const removeFromInventory = useCallback((itemId: string) => {
+    setGameState((prev) => {
+      if (!prev) return null
+      const existing = prev.inventory.find((i) => i.id === itemId)
+      if (!existing) return prev
+      if (existing.quantity <= 1) {
+        return { ...prev, inventory: prev.inventory.filter((i) => i.id !== itemId) }
+      }
+      return {
+        ...prev,
+        inventory: prev.inventory.map((i) =>
+          i.id === itemId ? { ...i, quantity: i.quantity - 1 } : i
+        ),
+      }
+    })
+  }, [])
+
+  const addJournalEntry = useCallback((entry: JournalEntry) => {
+    setGameState((prev) => {
+      if (!prev) return null
+      return { ...prev, journalEntries: [...prev.journalEntries, entry] }
+    })
+  }, [])
+
+  const sendGift = useCallback(async (recipientId: string, type: "item" | "gold", itemId?: string, amount?: number): Promise<boolean> => {
+    try {
+      const res = await fetch("/api/gifts/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ recipientId, type, itemId, amount }),
+      })
+      if (!res.ok) return false
+
+      // Update local state to reflect the deduction
+      setGameState((prev) => {
+        if (!prev) return null
+        if (type === "gold" && amount) {
+          return { ...prev, gold: prev.gold - amount }
+        }
+        if (type === "item" && itemId) {
+          const existing = prev.inventory.find(i => i.id === itemId)
+          if (!existing) return prev
+          if (existing.quantity <= 1) {
+            return { ...prev, inventory: prev.inventory.filter(i => i.id !== itemId) }
+          }
+          return {
+            ...prev,
+            inventory: prev.inventory.map(i =>
+              i.id === itemId ? { ...i, quantity: i.quantity - 1 } : i
+            ),
+          }
+        }
+        return prev
+      })
+      return true
+    } catch {
+      return false
+    }
+  }, [])
+
+  const claimGift = useCallback(async (giftId: string): Promise<boolean> => {
+    try {
+      const res = await fetch("/api/gifts/claim", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ giftId }),
+      })
+      if (!res.ok) return false
+
+      const { gift } = await res.json()
+
+      // Update local state to reflect the addition
+      setGameState((prev) => {
+        if (!prev) return null
+        if (gift.type === "gold" && gift.amount) {
+          return { ...prev, gold: prev.gold + gift.amount }
+        }
+        if (gift.type === "item" && gift.itemId) {
+          const existing = prev.inventory.find(i => i.id === gift.itemId)
+          if (existing) {
+            return {
+              ...prev,
+              inventory: prev.inventory.map(i =>
+                i.id === gift.itemId ? { ...i, quantity: i.quantity + 1 } : i
+              ),
+            }
+          }
+          return {
+            ...prev,
+            inventory: [
+              ...prev.inventory,
+              { id: gift.itemId, name: { es: gift.itemName || gift.itemId }, category: "gift" as const, quantity: 1 },
+            ],
+          }
+        }
+        return prev
+      })
+      return true
+    } catch {
+      return false
+    }
+  }, [])
+
   const shopItems = SHOP_ITEMS.map((item) => ({
     ...item,
     unlocked: gameState?.ownedItems.includes(item.id) || item.price === 0,
@@ -282,7 +443,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
         startGame,
         loadSavedGame,
         hasSavedGame,
-        savedSessionId,
+        setUserId,
         movePlayer,
         changeArea,
         addVocabulary,
@@ -299,6 +460,12 @@ export function GameProvider({ children }: { children: ReactNode }) {
         canAfford,
         isShopOpen,
         setIsShopOpen,
+        updateFriendship,
+        addToInventory,
+        removeFromInventory,
+        addJournalEntry,
+        sendGift,
+        claimGift,
       }}
     >
       {children}

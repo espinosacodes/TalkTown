@@ -2,16 +2,18 @@
 
 import { useState, useEffect } from "react"
 import { useGame } from "@/lib/game-context"
+import type { LearningDirection } from "@/lib/game-state"
 
 export function LanguageSelect() {
-  const { startGame, isGameStarted, hasSavedGame, savedSessionId, loadSavedGame } = useGame()
+  const { startGame, isGameStarted, hasSavedGame, loadSavedGame } = useGame()
   const [playerName, setPlayerName] = useState("")
-  const [step, setStep] = useState<"intro" | "name" | "confirm">("intro")
+  const [direction, setDirection] = useState<LearningDirection>("en-to-es")
+  const [step, setStep] = useState<"intro" | "direction" | "name" | "confirm">("intro")
   const [typedText, setTypedText] = useState("")
   const [showContinue, setShowContinue] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
 
-  const introText = "* 不思議な力があなたの中に響いている...\n  A strange power resonates within you..."
+  const introText = "* Un poder extrano resuena dentro de ti...\n  A strange power resonates within you..."
 
   // Typewriter effect for intro
   useEffect(() => {
@@ -36,9 +38,8 @@ export function LanguageSelect() {
   if (isGameStarted) return null
 
   const handleContinueGame = async () => {
-    if (!savedSessionId) return
     setIsLoading(true)
-    const success = await loadSavedGame(savedSessionId)
+    const success = await loadSavedGame()
     if (!success) {
       setIsLoading(false)
       // If load fails, let them start new
@@ -48,7 +49,7 @@ export function LanguageSelect() {
 
   const handleStartGame = () => {
     if (playerName.trim()) {
-      startGame("ja", playerName.trim())
+      startGame(direction, playerName.trim())
     }
   }
 
@@ -61,10 +62,10 @@ export function LanguageSelect() {
             LANGUAGE QUEST
           </h1>
           <div className="text-white font-pixel text-[10px]">
-            * ことばの冒険 - An AI-Powered Bilingual RPG *
+            * La Aventura de las Palabras - An AI-Powered Bilingual RPG *
           </div>
           <div className="text-gray-500 font-pixel text-[8px] mt-1">
-            日本語 + English
+            Espanol + English
           </div>
         </div>
 
@@ -75,17 +76,17 @@ export function LanguageSelect() {
               <div className="text-white font-pixel text-xs leading-relaxed min-h-[80px] whitespace-pre-line">
                 <p>{typedText}<span className="animate-pulse">_</span></p>
                 {showContinue && (
-                  <p className="mt-4 text-yellow-400">* ことばの力。The power of WORDS.</p>
+                  <p className="mt-4 text-yellow-400">* El poder de las PALABRAS. The power of WORDS.</p>
                 )}
               </div>
 
               {showContinue && (
                 <div className="space-y-3">
                   <button
-                    onClick={() => setStep("name")}
+                    onClick={() => setStep("direction")}
                     className="text-yellow-400 hover:text-white font-pixel text-xs border-2 border-yellow-400 hover:border-white px-6 py-3 transition-colors w-full"
                   >
-                    [ はじめる / NEW GAME ]
+                    [ EMPEZAR / NEW GAME ]
                   </button>
 
                   {hasSavedGame && (
@@ -94,11 +95,57 @@ export function LanguageSelect() {
                       disabled={isLoading}
                       className="text-cyan-400 hover:text-white font-pixel text-xs border-2 border-cyan-400 hover:border-white px-6 py-3 transition-colors w-full disabled:opacity-50"
                     >
-                      {isLoading ? "* ロード中... / Loading..." : "[ つづける / CONTINUE ]"}
+                      {isLoading ? "* Cargando... / Loading..." : "[ CONTINUAR / CONTINUE ]"}
                     </button>
                   )}
                 </div>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* Direction Picker */}
+        {step === "direction" && (
+          <div className="undertale-box p-1">
+            <div className="bg-black p-6">
+              <div className="text-yellow-400 font-pixel text-xs mb-2 text-center">
+                * Que quieres aprender? / What do you want to learn?
+              </div>
+              <div className="text-gray-500 font-pixel text-[8px] mb-6 text-center">
+                Elige tu direccion / Choose your direction
+              </div>
+
+              <div className="space-y-3 mb-6">
+                <button
+                  onClick={() => { setDirection("en-to-es"); setStep("name") }}
+                  className={`w-full text-left font-pixel text-xs border-2 px-4 py-3 transition-colors ${
+                    direction === "en-to-es"
+                      ? "text-yellow-400 border-yellow-400"
+                      : "text-white border-white/40 hover:border-white"
+                  }`}
+                >
+                  <div>I speak English, teach me Spanish</div>
+                  <div className="text-gray-500 text-[8px] mt-1">NPCs speak Spanish with English translations</div>
+                </button>
+                <button
+                  onClick={() => { setDirection("es-to-en"); setStep("name") }}
+                  className={`w-full text-left font-pixel text-xs border-2 px-4 py-3 transition-colors ${
+                    direction === "es-to-en"
+                      ? "text-yellow-400 border-yellow-400"
+                      : "text-white border-white/40 hover:border-white"
+                  }`}
+                >
+                  <div>Hablo espanol, ensenname ingles</div>
+                  <div className="text-gray-500 text-[8px] mt-1">NPCs hablan ingles con traducciones en espanol</div>
+                </button>
+              </div>
+
+              <button
+                onClick={() => setStep("intro")}
+                className="w-full text-gray-400 hover:text-white font-pixel text-xs border border-gray-600 hover:border-white px-4 py-2 transition-colors"
+              >
+                [ VOLVER / BACK ]
+              </button>
             </div>
           </div>
         )}
@@ -108,10 +155,10 @@ export function LanguageSelect() {
           <div className="undertale-box p-1">
             <div className="bg-black p-6">
               <div className="text-yellow-400 font-pixel text-xs mb-2 text-center">
-                * お名前は？ / What is your name?
+                * Como te llamas? / What is your name?
               </div>
               <div className="text-gray-500 font-pixel text-[8px] mb-6 text-center">
-                あなたの冒険が始まります / Your adventure begins
+                Tu aventura comienza / Your adventure begins
               </div>
 
               <div className="mb-6">
@@ -121,7 +168,7 @@ export function LanguageSelect() {
                     type="text"
                     value={playerName}
                     onChange={(e) => setPlayerName(e.target.value)}
-                    placeholder="名前... / Name..."
+                    placeholder="Nombre... / Name..."
                     className="flex-1 bg-transparent text-white font-pixel text-xs focus:outline-none placeholder:text-gray-600"
                     maxLength={12}
                     autoFocus
@@ -139,17 +186,17 @@ export function LanguageSelect() {
 
               <div className="flex gap-4">
                 <button
-                  onClick={() => setStep("intro")}
+                  onClick={() => setStep("direction")}
                   className="flex-1 text-gray-400 hover:text-white font-pixel text-xs border border-gray-600 hover:border-white px-4 py-2 transition-colors"
                 >
-                  [ もどる / BACK ]
+                  [ VOLVER / BACK ]
                 </button>
                 <button
                   onClick={() => playerName.trim() && setStep("confirm")}
                   disabled={!playerName.trim()}
                   className="flex-1 text-yellow-400 hover:text-white font-pixel text-xs border-2 border-yellow-400 hover:border-white px-4 py-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  [ つぎへ / NEXT ]
+                  [ SIGUIENTE / NEXT ]
                 </button>
               </div>
             </div>
@@ -161,7 +208,7 @@ export function LanguageSelect() {
           <div className="undertale-box p-1">
             <div className="bg-black p-6 text-center">
               <div className="text-yellow-400 font-pixel text-xs mb-4">
-                * 確認 / Confirmation
+                * Confirmacion / Confirmation
               </div>
 
               <div className="border border-white/30 p-4 mb-6">
@@ -169,15 +216,19 @@ export function LanguageSelect() {
                   {playerName}
                 </div>
                 <div className="text-gray-500 font-pixel text-[10px]">
-                  学習中: 日本語 + English
+                  {direction === "en-to-es"
+                    ? "Aprendiendo: Espanol"
+                    : "Learning: English"}
                 </div>
                 <div className="text-gray-600 font-pixel text-[8px] mt-1">
-                  Learning: Japanese + English
+                  {direction === "en-to-es"
+                    ? "English speaker learning Spanish"
+                    : "Hispanohablante aprendiendo ingles"}
                 </div>
               </div>
 
               <div className="text-white font-pixel text-xs mb-2">
-                * この情報で正しいですか？
+                * Es correcto?
               </div>
               <div className="text-gray-500 font-pixel text-[8px] mb-6">
                 [Is this correct?]
@@ -188,13 +239,13 @@ export function LanguageSelect() {
                   onClick={() => setStep("name")}
                   className="flex-1 text-gray-400 hover:text-white font-pixel text-xs border border-gray-600 hover:border-white px-4 py-2 transition-colors"
                 >
-                  [ いいえ / NO ]
+                  [ NO / NO ]
                 </button>
                 <button
                   onClick={handleStartGame}
                   className="flex-1 text-yellow-400 hover:text-white font-pixel text-xs border-2 border-yellow-400 hover:border-white px-4 py-2 transition-colors"
                 >
-                  [ はい / YES ]
+                  [ SI / YES ]
                 </button>
               </div>
             </div>
@@ -212,7 +263,7 @@ export function LanguageSelect() {
             </svg>
           </div>
           <div className="text-gray-600 font-pixel text-[8px]">
-            * AIで動く / Powered by AI *
+            * Impulsado por IA / Powered by AI *
           </div>
         </div>
       </div>

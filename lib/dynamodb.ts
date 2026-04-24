@@ -19,4 +19,5 @@ export const TABLES = {
   sessions: "language-quest-sessions",
   vocabulary: "language-quest-vocabulary",
   conversations: "language-quest-conversations",
+  gifts: "language-quest-gifts",
 } as const

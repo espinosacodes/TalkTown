@@ -14,9 +14,9 @@ const _pressStart2P = Press_Start_2P({
 
 export const metadata: Metadata = {
   title: 'Language Quest - AI-Powered Language Learning RPG',
-  description: 'Learn Spanish or Japanese through an immersive pixel-art RPG adventure. Talk to AI-powered NPCs, complete quests, and master a new language!',
+  description: 'Learn Spanish through an immersive pixel-art RPG adventure. Talk to AI-powered NPCs, complete quests, and master a new language!',
   generator: 'v0.app',
-  keywords: ['language learning', 'RPG', 'Spanish', 'Japanese', 'AI', 'game', 'education'],
+  keywords: ['language learning', 'RPG', 'Spanish', 'AI', 'game', 'education'],
   icons: {
     icon: [
       {

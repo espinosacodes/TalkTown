@@ -1,22 +1,22 @@
 "use client"
 
 import { useState } from "react"
-import type { VocabularyWord, Language } from "@/lib/game-state"
+import type { VocabularyWord, LearningDirection } from "@/lib/game-state"
 
 interface VocabularyProps {
   vocabulary: VocabularyWord[]
-  targetLanguage: Language
+  targetLanguage: LearningDirection
 }
 
 export function Vocabulary({ vocabulary, targetLanguage }: VocabularyProps) {
   const [searchTerm, setSearchTerm] = useState("")
   const [sortBy, setSortBy] = useState<"recent" | "alpha">("recent")
-  
-  const filteredWords = vocabulary.filter(word => 
+
+  const filteredWords = vocabulary.filter(word =>
     word.word.toLowerCase().includes(searchTerm.toLowerCase()) ||
     word.translation.toLowerCase().includes(searchTerm.toLowerCase())
   )
-  
+
   const sortedWords = [...filteredWords].sort((a, b) => {
     if (sortBy === "alpha") {
       return a.word.localeCompare(b.word)
@@ -24,11 +24,11 @@ export function Vocabulary({ vocabulary, targetLanguage }: VocabularyProps) {
     // Recent = reverse order (newest first)
     return 0
   })
-  
+
   if (sortBy === "recent") {
     sortedWords.reverse()
   }
-  
+
   return (
     <div className="undertale-box">
       <div className="bg-black p-4">
@@ -36,17 +36,17 @@ export function Vocabulary({ vocabulary, targetLanguage }: VocabularyProps) {
         <div className="flex items-center justify-between mb-4 pb-3 border-b border-white/20">
           <div>
             <h2 className="text-cyan-400 font-pixel text-xs">
-              単語帳 / VOCABULARY
+              Vocabulario / VOCABULARY
             </h2>
             <p className="text-gray-500 font-pixel text-[8px] mt-1">
-              * 学んだ単語: {vocabulary.length} / Words learned: {vocabulary.length}
+              * Palabras aprendidas: {vocabulary.length} / Words learned: {vocabulary.length}
             </p>
           </div>
           <div className="text-gray-600 font-pixel text-[8px]">
-            日本語 + EN
+            Espanol + EN
           </div>
         </div>
-        
+
         {/* Search */}
         <div className="flex items-center gap-2 border-2 border-white/30 p-2 mb-4 focus-within:border-yellow-400">
           <span className="text-yellow-400 font-pixel text-xs">{">"}</span>
@@ -66,7 +66,7 @@ export function Vocabulary({ vocabulary, targetLanguage }: VocabularyProps) {
             </button>
           )}
         </div>
-        
+
         {/* Sort Options */}
         <div className="flex gap-2 mb-4">
           <button
@@ -90,16 +90,16 @@ export function Vocabulary({ vocabulary, targetLanguage }: VocabularyProps) {
             A-Z
           </button>
         </div>
-        
+
         {/* Word List */}
         <div className="max-h-80 overflow-y-auto game-scrollbar">
           {vocabulary.length === 0 ? (
             <div className="text-center py-8">
               <div className="text-gray-500 font-pixel text-xs mb-2">
-                * まだ単語を学んでいません
+                * No has aprendido palabras aun
               </div>
               <div className="text-gray-600 font-pixel text-[8px]">
-                NPCと話して新しい単語を学ぼう! / Talk to NPCs to learn words!
+                Habla con los NPCs para aprender palabras! / Talk to NPCs to learn words!
               </div>
             </div>
           ) : sortedWords.length === 0 ? (
@@ -138,7 +138,7 @@ export function Vocabulary({ vocabulary, targetLanguage }: VocabularyProps) {
             </div>
           )}
         </div>
-        
+
         {/* Stats Footer */}
         {vocabulary.length > 0 && (
           <div className="mt-4 pt-3 border-t border-white/10 flex justify-between text-gray-500 font-pixel text-[8px]">
