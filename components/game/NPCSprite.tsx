@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import type { NPCProfile, LearningDirection, AnimalType } from "@/lib/game-state"
+import type { NPCActivity } from "@/lib/npc-schedules"
 
 interface NPCSpriteProps {
   npc: NPCProfile
@@ -9,14 +10,23 @@ interface NPCSpriteProps {
   tileSize: number
   onClick: () => void
   isHighlighted: boolean
+  position?: { x: number; y: number }
+  activity?: NPCActivity
+  activityLabel?: string
+  facingDirection?: "left" | "right"
+  interactionSnippet?: string
 }
 
-export function NPCSprite({ npc, language, tileSize, onClick, isHighlighted }: NPCSpriteProps) {
+export function NPCSprite({ npc, language, tileSize, onClick, isHighlighted, position, activity, activityLabel, facingDirection = "right", interactionSnippet }: NPCSpriteProps) {
   const [frame, setFrame] = useState(0)
-  const [wanderOffset, setWanderOffset] = useState({ x: 0, y: 0 })
   const colors = npc.spriteColors
+  const isWalking = activity === "walking"
+
+  // Use runtime position if provided, otherwise fall back to profile position
+  const renderPosition = position || npc.position
 
   // Idle animation - different animals have different rhythms
+  // Walking NPCs animate faster
   useEffect(() => {
     const speeds: Record<AnimalType, number> = {
       cat: 400, bear: 500, fox: 350, owl: 600,
@@ -25,33 +35,22 @@ export function NPCSprite({ npc, language, tileSize, onClick, isHighlighted }: N
       crane: 550, dog: 380, monkey: 320, horse: 450,
       pig: 480, penguin: 500, mouse: 300,
     }
-    const speed = speeds[colors.animalType] || 400
+    const speed = isWalking ? 150 : (speeds[colors.animalType] || 400)
     const interval = setInterval(() => {
       setFrame((f) => (f + 1) % 4)
     }, speed)
     return () => clearInterval(interval)
-  }, [colors.animalType])
-
-  // Subtle NPC wandering
-  useEffect(() => {
-    const wander = setInterval(() => {
-      setWanderOffset({
-        x: (Math.random() - 0.5) * 3,
-        y: (Math.random() - 0.5) * 2,
-      })
-    }, 3000 + Math.random() * 2000)
-    return () => clearInterval(wander)
-  }, [])
+  }, [colors.animalType, isWalking])
 
   const isBlinking = frame === 2
-  const bobOffset = frame % 2 === 0 ? 0 : -1
+  const bobOffset = isWalking ? (frame % 2 === 0 ? -2 : 0) : (frame % 2 === 0 ? 0 : -1)
 
   return (
     <div
       className="absolute transition-all duration-300 ease-out cursor-pointer z-10"
       style={{
-        left: npc.position.x * tileSize + wanderOffset.x,
-        top: npc.position.y * tileSize + wanderOffset.y,
+        left: renderPosition.x * tileSize,
+        top: renderPosition.y * tileSize,
         width: tileSize,
         height: tileSize,
       }}
@@ -69,7 +68,10 @@ export function NPCSprite({ npc, language, tileSize, onClick, isHighlighted }: N
       )}
 
       {/* Animal character */}
-      <div className="relative w-full h-full flex items-center justify-center">
+      <div
+        className="relative w-full h-full flex items-center justify-center"
+        style={{ transform: facingDirection === "left" ? "scaleX(-1)" : undefined }}
+      >
         {/* Shadow */}
         <div className="absolute bottom-0.5 w-6 h-1.5 bg-black/40 rounded-full" />
 
@@ -313,6 +315,33 @@ export function NPCSprite({ npc, language, tileSize, onClick, isHighlighted }: N
         <div className="absolute -top-2 -right-1">
           <div className="w-2.5 h-2.5 bg-white rounded-full flex items-center justify-center animate-pulse">
             <div className="w-1 h-1 bg-black rounded-full" />
+          </div>
+        </div>
+      )}
+
+      {/* Activity label (shown when not highlighted and has a label) */}
+      {!isHighlighted && activityLabel && (
+        <div className="absolute -top-5 left-1/2 -translate-x-1/2 whitespace-nowrap pointer-events-none">
+          <div className="px-1.5 py-0.5 bg-black/80 border border-white/20 rounded-sm">
+            <span className="text-gray-300 font-pixel text-[6px]">{activityLabel}</span>
+          </div>
+        </div>
+      )}
+
+      {/* NPC-NPC interaction speech bubble */}
+      {interactionSnippet && !isHighlighted && (
+        <div className="absolute -top-10 left-1/2 -translate-x-1/2 whitespace-nowrap pointer-events-none z-20">
+          <div className="px-2 py-1 bg-white border border-gray-300 rounded-md relative">
+            <span className="text-black font-pixel text-[7px]">{interactionSnippet}</span>
+            {/* Pointer triangle */}
+            <div
+              className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-0 h-0"
+              style={{
+                borderLeft: "4px solid transparent",
+                borderRight: "4px solid transparent",
+                borderTop: "4px solid white",
+              }}
+            />
           </div>
         </div>
       )}

@@ -3,16 +3,21 @@
 import { useEffect, useCallback, useState, useRef } from "react"
 import { useGame } from "@/lib/game-context"
 import { AREA_MAPS, TILE_COLORS, type TileType } from "@/lib/tile-map"
-import { getNPCsInArea } from "@/lib/npc-profiles"
 import { PlayerSprite } from "./PlayerSprite"
 import { NPCSprite } from "./NPCSprite"
+import { useNPCSimulation } from "@/hooks/use-npc-simulation"
+import type { TimeOfDay } from "@/lib/npc-schedules"
 
 const TILE_SIZE = 36
 
-export function GameCanvas() {
+interface GameCanvasProps {
+  onNPCSimulation?: (getNPCPosition: (npcId: string) => { x: number; y: number } | undefined) => void
+}
+
+export function GameCanvas({ onNPCSimulation }: GameCanvasProps = {}) {
   const { gameState, movePlayer, setActiveNpcId, activeNpcId } = useGame()
   const [areaTransition, setAreaTransition] = useState<string | null>(null)
-  const [timeOfDay, setTimeOfDay] = useState<"morning" | "afternoon" | "evening">("morning")
+  const [timeOfDay, setTimeOfDay] = useState<TimeOfDay>("morning")
   const prevAreaRef = useRef<string | null>(null)
 
   // Time of day cycle (cosmetic)
@@ -27,6 +32,21 @@ export function GameCanvas() {
     const interval = setInterval(cycle, 30000)
     return () => clearInterval(interval)
   }, [])
+
+  // NPC simulation
+  const { getNPCsInCurrentArea, getInteractionSnippet, npcStates } = useNPCSimulation(
+    gameState?.currentArea || "town_square",
+    timeOfDay,
+  )
+
+  // Expose runtime NPC positions to parent for touch handler
+  useEffect(() => {
+    if (!onNPCSimulation) return
+    onNPCSimulation((npcId: string) => {
+      const state = npcStates[npcId]
+      return state?.position
+    })
+  }, [npcStates, onNPCSimulation])
 
   // Area transition animation
   useEffect(() => {
@@ -46,10 +66,10 @@ export function GameCanvas() {
     // Space key - talk to nearby NPC
     if (e.key === " ") {
       e.preventDefault()
-      const npcsInArea = getNPCsInArea(gameState.currentArea)
+      const npcsInArea = getNPCsInCurrentArea()
       const nearbyNpc = npcsInArea.find((npc) => {
-        const dx = Math.abs(gameState.playerPosition.x - npc.position.x)
-        const dy = Math.abs(gameState.playerPosition.y - npc.position.y)
+        const dx = Math.abs(gameState.playerPosition.x - npc.runtimePosition.x)
+        const dy = Math.abs(gameState.playerPosition.y - npc.runtimePosition.y)
         return dx <= 1 && dy <= 1
       })
       if (nearbyNpc) {
@@ -95,7 +115,7 @@ export function GameCanvas() {
 
     e.preventDefault()
     movePlayer(dx, dy)
-  }, [gameState, movePlayer, activeNpcId, setActiveNpcId])
+  }, [gameState, movePlayer, activeNpcId, setActiveNpcId, getNPCsInCurrentArea])
 
   useEffect(() => {
     window.addEventListener("keydown", handleKeyDown)
@@ -105,13 +125,13 @@ export function GameCanvas() {
   if (!gameState) return null
 
   const areaMap = AREA_MAPS[gameState.currentArea]
-  const npcsInArea = getNPCsInArea(gameState.currentArea)
+  const npcsInArea = getNPCsInCurrentArea()
 
   const handleNPCClick = (npcId: string) => {
     const npc = npcsInArea.find((n) => n.id === npcId)
     if (!npc) return
-    const dx = Math.abs(gameState.playerPosition.x - npc.position.x)
-    const dy = Math.abs(gameState.playerPosition.y - npc.position.y)
+    const dx = Math.abs(gameState.playerPosition.x - npc.runtimePosition.x)
+    const dy = Math.abs(gameState.playerPosition.y - npc.runtimePosition.y)
     if (dx <= 1 && dy <= 1) {
       setActiveNpcId(npcId)
     }
@@ -180,9 +200,14 @@ export function GameCanvas() {
               tileSize={TILE_SIZE}
               onClick={() => handleNPCClick(npc.id)}
               isHighlighted={
-                Math.abs(gameState.playerPosition.x - npc.position.x) <= 1 &&
-                Math.abs(gameState.playerPosition.y - npc.position.y) <= 1
+                Math.abs(gameState.playerPosition.x - npc.runtimePosition.x) <= 1 &&
+                Math.abs(gameState.playerPosition.y - npc.runtimePosition.y) <= 1
               }
+              position={npc.runtimePosition}
+              activity={npc.activity}
+              activityLabel={npc.activityLabel}
+              facingDirection={npc.facingDirection}
+              interactionSnippet={getInteractionSnippet(npc.id)}
             />
           ))}
 

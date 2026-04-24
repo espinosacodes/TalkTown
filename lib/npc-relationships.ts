@@ -5,7 +5,7 @@ export interface NPCRelationship {
   opinion: string
 }
 
-const RELATIONSHIPS: NPCRelationship[] = [
+export const RELATIONSHIPS: NPCRelationship[] = [
   // Rosa (innkeeper) relationships
   { npcId: "innkeeper", targetNpcId: "gardener", relationship: "family", opinion: "Abuela Nube es como mi madre. La quiero mucho." },
   { npcId: "innkeeper", targetNpcId: "fishmonger", relationship: "friend", opinion: "Pedro es ruidoso pero tiene buen corazon. Le guardo comida." },

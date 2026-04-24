@@ -18,6 +18,7 @@ import { useIsTouchDevice } from "@/hooks/use-touch-device"
 import { AREA_MAPS } from "@/lib/tile-map"
 import { getNPCsInArea } from "@/lib/npc-profiles"
 import type { NPCProfile, MiniGameType } from "@/lib/game-state"
+import type { NPCActivity } from "@/lib/npc-schedules"
 import { SHOP_ITEMS } from "@/lib/game-state"
 
 const TILE_SIZE = 36
@@ -70,6 +71,11 @@ export function GameUI() {
   const isTouchDevice = useIsTouchDevice()
   const canvasWrapperRef = useRef<HTMLDivElement>(null)
   const [canvasScale, setCanvasScale] = useState(1)
+  const getNPCPositionRef = useRef<((npcId: string) => { x: number; y: number } | undefined) | undefined>(undefined)
+
+  const handleNPCSimulation = useCallback((getter: (npcId: string) => { x: number; y: number } | undefined) => {
+    getNPCPositionRef.current = getter
+  }, [])
 
   // Compute responsive canvas scale
   useEffect(() => {
@@ -104,11 +110,13 @@ export function GameUI() {
     if (activeNpcId) {
       setActiveNpcId(null)
     } else if (gameState) {
-      // Try to talk to nearby NPC — same logic as Space key
+      // Try to talk to nearby NPC — use runtime positions when available
       const npcsInArea = getNPCsInArea(gameState.currentArea)
       const nearbyNpc = npcsInArea.find((npc: NPCProfile) => {
-        const dx = Math.abs(gameState.playerPosition.x - npc.position.x)
-        const dy = Math.abs(gameState.playerPosition.y - npc.position.y)
+        const runtimePos = getNPCPositionRef.current?.(npc.id)
+        const pos = runtimePos || npc.position
+        const dx = Math.abs(gameState.playerPosition.x - pos.x)
+        const dy = Math.abs(gameState.playerPosition.y - pos.y)
         return dx <= 1 && dy <= 1
       })
       if (nearbyNpc) {
@@ -244,7 +252,7 @@ export function GameUI() {
                   width: canvasScale < 1 ? "max-content" : undefined,
                 }}
               >
-                <GameCanvas />
+                <GameCanvas onNPCSimulation={handleNPCSimulation} />
               </div>
             </div>
           )}
