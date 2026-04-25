@@ -1,5 +1,6 @@
 import { groq } from "@ai-sdk/groq"
 import { google } from "@ai-sdk/google"
+import { createOpenRouter } from "@openrouter/ai-sdk-provider"
 import { generateText as aiGenerateText } from "ai"
 import type { LanguageModel } from "ai"
 
@@ -23,6 +24,15 @@ const providers: AIProvider[] = [
     getModel: () => google("gemini-2.0-flash"),
     workflowModelId: "google/gemini-2.0-flash",
   },
+  {
+    name: "openrouter",
+    envKey: "OPENROUTER_API_KEY",
+    getModel: () => {
+      const openrouter = createOpenRouter({ apiKey: process.env.OPENROUTER_API_KEY })
+      return openrouter("meta-llama/llama-3.3-70b-instruct:free")
+    },
+    workflowModelId: "openrouter/meta-llama/llama-3.3-70b-instruct:free",
+  },
 ]
 
 function getAvailableProviders(): AIProvider[] {
@@ -34,7 +44,7 @@ export function getModel(): LanguageModel {
   const available = getAvailableProviders()
   if (available.length === 0) {
     throw new Error(
-      "No AI provider configured. Add GROQ_API_KEY or GOOGLE_GENERATIVE_AI_API_KEY to .env"
+      "No AI provider configured. Add GROQ_API_KEY, GOOGLE_GENERATIVE_AI_API_KEY, or OPENROUTER_API_KEY to .env"
     )
   }
   return available[0].getModel()
@@ -45,7 +55,7 @@ export function getWorkflowModelId(): string {
   const available = getAvailableProviders()
   if (available.length === 0) {
     throw new Error(
-      "No AI provider configured. Add GROQ_API_KEY or GOOGLE_GENERATIVE_AI_API_KEY to .env"
+      "No AI provider configured. Add GROQ_API_KEY, GOOGLE_GENERATIVE_AI_API_KEY, or OPENROUTER_API_KEY to .env"
     )
   }
   return available[0].workflowModelId
@@ -58,7 +68,7 @@ export async function generateTextWithFallback(
   const available = getAvailableProviders()
   if (available.length === 0) {
     throw new Error(
-      "No AI provider configured. Add GROQ_API_KEY or GOOGLE_GENERATIVE_AI_API_KEY to .env"
+      "No AI provider configured. Add GROQ_API_KEY, GOOGLE_GENERATIVE_AI_API_KEY, or OPENROUTER_API_KEY to .env"
     )
   }
 
