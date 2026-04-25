@@ -237,26 +237,38 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
               zIndex: isActive ? 20 : 10,
             }}
           >
-            {/* Speech bubble */}
+            {/* Speech bubble - positioned to the inner side of the character */}
             <div
-              className="absolute -top-16 whitespace-nowrap transition-all duration-500"
+              className="absolute transition-all duration-500"
               style={{
-                left: "50%",
-                transform: `translateX(-50%) ${pos.side === "left" ? "" : "scaleX(-1)"}`,
+                top: "-10px",
+                ...(pos.side === "left"
+                  ? { left: "70px" }
+                  : { right: "70px" }),
+                transform: pos.side === "left" ? "" : "scaleX(-1)",
                 opacity: isActive ? 1 : 0,
                 pointerEvents: "none",
+                whiteSpace: "nowrap",
               }}
             >
               <div className="px-3 py-1.5 bg-white rounded-lg border-2 border-gray-300 relative" style={{ maxWidth: 200, whiteSpace: "normal" }}>
                 <p className="text-black text-xs font-bold">{char.catchphrase}</p>
-                <div className="absolute -bottom-2 left-1/2 -translate-x-1/2" style={{ width: 0, height: 0, borderLeft: "6px solid transparent", borderRight: "6px solid transparent", borderTop: "8px solid white" }} />
+                {/* Pointer triangle on the side facing the character */}
+                <div
+                  className="absolute top-1/2 -translate-y-1/2"
+                  style={{
+                    ...(pos.side === "left"
+                      ? { left: -8, width: 0, height: 0, borderTop: "6px solid transparent", borderBottom: "6px solid transparent", borderRight: "8px solid white" }
+                      : { right: -8, width: 0, height: 0, borderTop: "6px solid transparent", borderBottom: "6px solid transparent", borderLeft: "8px solid white" }),
+                  }}
+                />
               </div>
             </div>
 
             {/* Name tag */}
             <div
-              className="absolute -top-5 left-1/2 whitespace-nowrap"
-              style={{ transform: `translateX(-50%) ${pos.side === "left" ? "" : "scaleX(-1)"}` }}
+              className="absolute left-1/2 whitespace-nowrap"
+              style={{ bottom: "-18px", transform: `translateX(-50%) ${pos.side === "left" ? "" : "scaleX(-1)"}` }}
             >
               <span className="text-amber-300 text-[10px] font-bold drop-shadow-md">{char.name}</span>
             </div>
