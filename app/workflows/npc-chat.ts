@@ -3,6 +3,7 @@ import { DurableAgent } from "@workflow/ai/agent"
 import { convertToModelMessages, tool, type UIMessageChunk, type UIMessage } from "ai"
 import * as z from "zod"
 import { getNPCProfile, buildNPCSystemPrompt } from "@/lib/npc-profiles"
+import { getWorkflowModelId } from "@/lib/ai-provider"
 import type { GameState, ConversationSummary } from "@/lib/game-state"
 
 interface NPCChatInput {
@@ -75,7 +76,7 @@ export async function npcChat(input: NPCChatInput) {
   const nativeLang = isLearningSpanish ? "English" : "Spanish"
 
   const agent = new DurableAgent({
-    model: "groq/llama-3.3-70b-versatile",
+    model: getWorkflowModelId(),
     instructions: systemPrompt,
     tools: {
       teachVocabulary: tool({

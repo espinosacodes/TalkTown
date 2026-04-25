@@ -1,5 +1,5 @@
-import { generateText, Output } from "ai"
-import { groq } from "@ai-sdk/groq"
+import { Output } from "ai"
+import { generateTextWithFallback } from "@/lib/ai-provider"
 import { z } from "zod"
 import type { NPCProfile } from "@/lib/game-state"
 
@@ -40,8 +40,7 @@ export async function POST(req: Request) {
     const npcName = npc.name?.es || "NPC"
     const npcRole = npc.role?.es || "Villager"
 
-    const result = await generateText({
-      model: groq("llama-3.3-70b-versatile"),
+    const result = await generateTextWithFallback({
       output: Output.object({ schema: DialogueResponseSchema }),
       prompt: `You are creating dialogue for an NPC in a bilingual (${targetLang} + ${nativeLang}) language learning RPG game (Undertale-style).
 

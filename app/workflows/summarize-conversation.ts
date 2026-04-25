@@ -1,5 +1,4 @@
-import { generateText } from "ai"
-import { groq } from "@ai-sdk/groq"
+import { generateTextWithFallback } from "@/lib/ai-provider"
 import { dynamodb, TABLES } from "@/lib/dynamodb"
 import { PutCommand } from "@aws-sdk/lib-dynamodb"
 import { getNPCProfile } from "@/lib/npc-profiles"
@@ -13,8 +12,7 @@ interface SummarizeInput {
 
 async function generateSummary(npcName: string, conversationText: string): Promise<string> {
   "use step"
-  const { text } = await generateText({
-    model: groq("llama-3.3-70b-versatile"),
+  const { text } = await generateTextWithFallback({
     prompt: `Summarize this conversation between a player and "${npcName}" in 1-3 sentences.
 Focus on: topics discussed, personal details shared, gifts given, key events.
 Keep under 80 words. Write in third person.
