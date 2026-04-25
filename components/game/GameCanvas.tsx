@@ -5,16 +5,21 @@ import { useGame } from "@/lib/game-context"
 import { AREA_MAPS, TILE_COLORS, type TileType } from "@/lib/tile-map"
 import { PlayerSprite } from "./PlayerSprite"
 import { NPCSprite } from "./NPCSprite"
+import { OtherPlayerSprite } from "./OtherPlayerSprite"
 import { useNPCSimulation } from "@/hooks/use-npc-simulation"
 import type { TimeOfDay } from "@/lib/npc-schedules"
+import type { OtherPlayer, ChatMessage } from "@/hooks/use-multiplayer"
 
 const TILE_SIZE = 36
 
 interface GameCanvasProps {
   onNPCSimulation?: (getNPCPosition: (npcId: string) => { x: number; y: number } | undefined) => void
+  otherPlayers?: OtherPlayer[]
+  chatMessages?: ChatMessage[]
+  onlineCount?: number
 }
 
-export function GameCanvas({ onNPCSimulation }: GameCanvasProps = {}) {
+export function GameCanvas({ onNPCSimulation, otherPlayers = [], chatMessages = [], onlineCount = 0 }: GameCanvasProps = {}) {
   const { gameState, movePlayer, setActiveNpcId, activeNpcId } = useGame()
   const [areaTransition, setAreaTransition] = useState<string | null>(null)
   const [timeOfDay, setTimeOfDay] = useState<TimeOfDay>("morning")
@@ -62,6 +67,8 @@ export function GameCanvas({ onNPCSimulation }: GameCanvasProps = {}) {
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     if (!gameState || activeNpcId) return
+    // Don't capture keys when typing in chat or other inputs
+    if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
 
     // Space key - talk to nearby NPC
     if (e.key === " ") {
@@ -159,6 +166,12 @@ export function GameCanvas({ onNPCSimulation }: GameCanvasProps = {}) {
           {timeOfDay === "afternoon" && "Tarde / Afternoon"}
           {timeOfDay === "evening" && "Noche / Evening"}
         </div>
+        {onlineCount > 1 && (
+          <div className="flex items-center gap-1">
+            <div className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse" />
+            <span className="text-green-400 font-pixel text-[8px]">{onlineCount}</span>
+          </div>
+        )}
       </div>
 
       {/* Game canvas */}
@@ -208,6 +221,16 @@ export function GameCanvas({ onNPCSimulation }: GameCanvasProps = {}) {
               activityLabel={npc.activityLabel}
               facingDirection={npc.facingDirection}
               interactionSnippet={getInteractionSnippet(npc.id)}
+            />
+          ))}
+
+          {/* Render other players */}
+          {otherPlayers.map((player) => (
+            <OtherPlayerSprite
+              key={player.id}
+              player={player}
+              tileSize={TILE_SIZE}
+              chatMessages={chatMessages}
             />
           ))}
 

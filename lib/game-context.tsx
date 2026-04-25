@@ -13,6 +13,7 @@ interface GameContextType {
   hasSavedGame: boolean
   setUserId: (id: string) => void
   movePlayer: (dx: number, dy: number) => boolean
+  playerFacing: "left" | "right"
   changeArea: (areaId: AreaId, x: number, y: number) => void
   addVocabulary: (word: VocabularyWord) => void
   updateQuest: (questId: string, objectiveId: string) => void
@@ -49,6 +50,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const [isShopOpen, setIsShopOpen] = useState(false)
   const [hasSavedGame, setHasSavedGame] = useState(false)
   const [userId, setUserId] = useState<string | null>(null)
+  const [playerFacing, setPlayerFacing] = useState<"left" | "right">("right")
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   // Check DynamoDB for existing save when userId is set
@@ -128,6 +130,9 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
   const movePlayer = useCallback((dx: number, dy: number): boolean => {
     if (!gameState) return false
+
+    if (dx > 0) setPlayerFacing("right")
+    else if (dx < 0) setPlayerFacing("left")
 
     const newX = gameState.playerPosition.x + dx
     const newY = gameState.playerPosition.y + dy
@@ -455,6 +460,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
         hasSavedGame,
         setUserId,
         movePlayer,
+        playerFacing,
         changeArea,
         addVocabulary,
         updateQuest,

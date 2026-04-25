@@ -10,7 +10,9 @@ import { HUD } from "./HUD"
 import { CraftingScreen } from "./CraftingScreen"
 import { JournalScreen } from "./JournalScreen"
 import { SocialTab } from "./SocialTab"
+import { PlayerChat } from "./PlayerChat"
 import { TouchControls } from "./TouchControls"
+import { useMultiplayer } from "@/hooks/use-multiplayer"
 import { MiniGameWordMatch } from "./MiniGameWordMatch"
 import { MiniGameFlashcard } from "./MiniGameFlashcard"
 import { MiniGameFishing } from "./MiniGameFishing"
@@ -59,9 +61,11 @@ export function GameUI() {
     canAfford,
     activeNpcId,
     setActiveNpcId,
+    playerFacing,
   } = useGame()
 
   const [activePanel, setActivePanel] = useState<"world" | "map" | "vocab" | "shop" | "social">("world")
+  const [chatFocused, setChatFocused] = useState(false)
   const [showCrafting, setShowCrafting] = useState(false)
   const [showJournal, setShowJournal] = useState(false)
   const [showInventory, setShowInventory] = useState(false)
@@ -76,6 +80,20 @@ export function GameUI() {
   const handleNPCSimulation = useCallback((getter: (npcId: string) => { x: number; y: number } | undefined) => {
     getNPCPositionRef.current = getter
   }, [])
+
+  // Multiplayer
+  const { otherPlayers, chatMessages, onlineCount, sendChat } = useMultiplayer({
+    userId: gameState?.sessionId || "",
+    playerName: gameState?.playerName || "",
+    currentArea: gameState?.currentArea || "town_square",
+    playerX: gameState?.playerPosition.x || 0,
+    playerY: gameState?.playerPosition.y || 0,
+    playerFacing,
+    outfit: gameState?.currentOutfit || "default",
+    hat: gameState?.currentHat || "hat_none",
+    level: gameState?.playerLevel || "beginner",
+    enabled: !!gameState,
+  })
 
   // Compute responsive canvas scale
   useEffect(() => {
@@ -254,7 +272,12 @@ export function GameUI() {
                   width: canvasScale < 1 ? "max-content" : undefined,
                 }}
               >
-                <GameCanvas onNPCSimulation={handleNPCSimulation} />
+                <GameCanvas
+                  onNPCSimulation={handleNPCSimulation}
+                  otherPlayers={otherPlayers}
+                  chatMessages={chatMessages}
+                  onlineCount={onlineCount}
+                />
               </div>
             </div>
           )}
@@ -378,6 +401,17 @@ export function GameUI() {
         <DialogueBox
           npcId={activeNpcId}
           onClose={() => setActiveNpcId(null)}
+        />
+      )}
+
+      {/* Player Chat */}
+      {activePanel === "world" && gameState && (
+        <PlayerChat
+          messages={chatMessages}
+          onlineCount={onlineCount}
+          onSend={sendChat}
+          currentUserId={gameState.sessionId}
+          onFocusChange={setChatFocused}
         />
       )}
 
