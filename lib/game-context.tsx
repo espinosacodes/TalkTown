@@ -57,7 +57,10 @@ export function GameProvider({ children }: { children: ReactNode }) {
     let cancelled = false
     async function checkSave() {
       try {
-        const res = await fetch("/api/load-game", { method: "POST" })
+        const res = await fetch("/api/load-game", {
+          method: "POST",
+          headers: { "x-user-id": userId },
+        })
         if (!res.ok) return
         const { gameState: loaded } = await res.json()
         if (!cancelled && loaded) {
@@ -73,16 +76,17 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
   // Debounced auto-save
   const saveGame = useCallback(async (state: GameState) => {
+    if (!userId) return
     try {
       await fetch("/api/save-game", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "x-user-id": userId },
         body: JSON.stringify({ gameState: state }),
       })
     } catch (err) {
       console.error("Auto-save failed:", err)
     }
-  }, [])
+  }, [userId])
 
   // Auto-save on state changes (debounced 2s)
   useEffect(() => {
@@ -104,8 +108,12 @@ export function GameProvider({ children }: { children: ReactNode }) {
   }, [userId])
 
   const loadSavedGame = useCallback(async (): Promise<boolean> => {
+    if (!userId) return false
     try {
-      const res = await fetch("/api/load-game", { method: "POST" })
+      const res = await fetch("/api/load-game", {
+        method: "POST",
+        headers: { "x-user-id": userId },
+      })
       if (!res.ok) return false
       const { gameState: loaded } = await res.json()
       if (loaded) {
@@ -353,9 +361,10 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
   const sendGift = useCallback(async (recipientId: string, type: "item" | "gold", itemId?: string, amount?: number): Promise<boolean> => {
     try {
+      if (!userId) return false
       const res = await fetch("/api/gifts/send", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "x-user-id": userId },
         body: JSON.stringify({ recipientId, type, itemId, amount }),
       })
       if (!res.ok) return false
@@ -389,9 +398,10 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
   const claimGift = useCallback(async (giftId: string): Promise<boolean> => {
     try {
+      if (!userId) return false
       const res = await fetch("/api/gifts/claim", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "x-user-id": userId },
         body: JSON.stringify({ giftId }),
       })
       if (!res.ok) return false

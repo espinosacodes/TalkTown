@@ -1,17 +1,11 @@
 import { start } from "workflow/api"
 import { createUIMessageStreamResponse, type UIMessage, type UIMessageChunk } from "ai"
-import { auth0 } from "@/lib/auth0"
 import { npcChat } from "@/app/workflows/npc-chat"
 import type { GameState, ConversationSummary } from "@/lib/game-state"
 
 export const maxDuration = 30
 
 export async function POST(req: Request) {
-  const session = await auth0.getSession()
-  if (!session) {
-    return new Response("Unauthorized", { status: 401 })
-  }
-
   try {
     const { messages, npcId, gameState, memories, gossip } = await req.json() as {
       messages: UIMessage[]

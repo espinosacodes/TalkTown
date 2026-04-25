@@ -1,31 +1,59 @@
-import { auth0 } from "@/lib/auth0";
-import { HomeContent } from "@/components/game/HomeContent";
+"use client"
 
-export default async function Home() {
-  const session = await auth0.getSession();
+import { useState, useEffect } from "react"
+import { HomeContent } from "@/components/game/HomeContent"
 
-  if (!session) {
+export default function Home() {
+  const [userId, setUserId] = useState<string | null>(null)
+  const [nameInput, setNameInput] = useState("")
+  const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    const stored = localStorage.getItem("userId")
+    if (stored) setUserId(stored)
+    setIsLoading(false)
+  }, [])
+
+  if (isLoading) return null
+
+  if (!userId) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen gap-4">
         <h1 className="text-2xl font-bold text-amber-100">Language Quest</h1>
         <p className="text-amber-200">AI-Powered Language Learning RPG</p>
-        <div className="flex gap-4 mt-4">
-          <a
-            href="/auth/login?screen_hint=signup"
+        <form
+          className="flex flex-col gap-3 mt-4 items-center"
+          onSubmit={async (e) => {
+            e.preventDefault()
+            const name = nameInput.trim()
+            if (!name) return
+            localStorage.setItem("userId", name)
+            setUserId(name)
+            fetch("/api/register", {
+              method: "POST",
+              headers: { "Content-Type": "application/json", "x-user-id": name },
+              body: JSON.stringify({ playerName: name }),
+            }).catch(console.error)
+          }}
+        >
+          <input
+            type="text"
+            placeholder="Enter your name"
+            value={nameInput}
+            onChange={(e) => setNameInput(e.target.value)}
+            className="px-4 py-2 rounded bg-amber-900/50 text-amber-100 border border-amber-700 placeholder-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-500"
+            autoFocus
+          />
+          <button
+            type="submit"
             className="px-6 py-2 bg-amber-600 text-white rounded hover:bg-amber-500 transition"
           >
-            Sign Up
-          </a>
-          <a
-            href="/auth/login"
-            className="px-6 py-2 bg-amber-800 text-white rounded hover:bg-amber-700 transition"
-          >
-            Log In
-          </a>
-        </div>
+            Start Playing
+          </button>
+        </form>
       </div>
-    );
+    )
   }
 
-  return <HomeContent userId={session.user.sub} />;
+  return <HomeContent userId={userId} />
 }

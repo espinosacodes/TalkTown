@@ -1,13 +1,7 @@
 import { dynamodb, TABLES } from "@/lib/dynamodb"
 import { GetCommand } from "@aws-sdk/lib-dynamodb"
-import { auth0 } from "@/lib/auth0"
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const session = await auth0.getSession()
-  if (!session) {
-    return Response.json({ error: "Unauthorized" }, { status: 401 })
-  }
-
   const { id } = await params
 
   try {

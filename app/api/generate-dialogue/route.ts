@@ -2,7 +2,6 @@ import { generateText, Output } from "ai"
 import { groq } from "@ai-sdk/groq"
 import { z } from "zod"
 import type { NPCProfile } from "@/lib/game-state"
-import { auth0 } from "@/lib/auth0"
 
 const DialogueLineSchema = z.object({
   targetText: z.string().describe("The dialogue in the target language"),
@@ -19,11 +18,6 @@ const DialogueResponseSchema = z.object({
 })
 
 export async function POST(req: Request) {
-  const session = await auth0.getSession()
-  if (!session) {
-    return Response.json({ error: "Unauthorized" }, { status: 401 })
-  }
-
   try {
     const { npc, targetLanguage, playerLevel, previousWords } = await req.json() as {
       npc: NPCProfile

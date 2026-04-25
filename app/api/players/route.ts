@@ -1,13 +1,7 @@
 import { dynamodb, TABLES } from "@/lib/dynamodb"
 import { ScanCommand } from "@aws-sdk/lib-dynamodb"
-import { auth0 } from "@/lib/auth0"
 
 export async function GET() {
-  const session = await auth0.getSession()
-  if (!session) {
-    return Response.json({ error: "Unauthorized" }, { status: 401 })
-  }
-
   try {
     const result = await dynamodb.send(new ScanCommand({
       TableName: TABLES.sessions,

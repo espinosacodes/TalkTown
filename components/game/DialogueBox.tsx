@@ -46,7 +46,7 @@ export function DialogueBox({ npcId, onClose }: DialogueBoxProps) {
   useEffect(() => {
     fetch("/api/load-memories", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "x-user-id": gameState?.sessionId || "" },
       body: JSON.stringify({ npcId }),
     })
       .then((r) => r.json())
@@ -137,7 +137,7 @@ export function DialogueBox({ npcId, onClose }: DialogueBoxProps) {
     if (messages.length > 2) {
       fetch("/api/summarize-conversation", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "x-user-id": gameState?.sessionId || "" },
         body: JSON.stringify({
           npcId,
           messages: messages

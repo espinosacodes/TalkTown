@@ -42,7 +42,7 @@ export function GiftSender({ recipientId, recipientName, onClose, onSent }: Gift
 
       const res = await fetch("/api/gifts/send", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "x-user-id": gameState.sessionId },
         body: JSON.stringify(body),
       })
 

@@ -1,13 +1,11 @@
 import { dynamodb, TABLES } from "@/lib/dynamodb"
 import { GetCommand, QueryCommand } from "@aws-sdk/lib-dynamodb"
-import { auth0 } from "@/lib/auth0"
 
-export async function POST() {
-  const session = await auth0.getSession()
-  if (!session) {
-    return Response.json({ error: "Unauthorized" }, { status: 401 })
+export async function POST(req: Request) {
+  const sessionId = req.headers.get("x-user-id")
+  if (!sessionId) {
+    return Response.json({ error: "Missing user ID" }, { status: 400 })
   }
-  const sessionId = session.user.sub
 
   try {
     // Load session

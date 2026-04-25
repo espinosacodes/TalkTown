@@ -123,7 +123,7 @@ export function SocialTab({ currentUserId, unclaimedGifts, onGiftsChanged }: Soc
     try {
       const res = await fetch("/api/gifts/claim", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "x-user-id": currentUserId },
         body: JSON.stringify({ giftId }),
       })
       if (res.ok) {

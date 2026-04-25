@@ -1,13 +1,11 @@
 import { start } from "workflow/api"
-import { auth0 } from "@/lib/auth0"
 import { saveGame } from "@/app/workflows/save-game"
 
 export async function POST(req: Request) {
-  const session = await auth0.getSession()
-  if (!session) {
-    return Response.json({ error: "Unauthorized" }, { status: 401 })
+  const sessionId = req.headers.get("x-user-id")
+  if (!sessionId) {
+    return Response.json({ error: "Missing user ID" }, { status: 400 })
   }
-  const sessionId = session.user.sub
 
   try {
     const { gameState } = await req.json()

@@ -127,7 +127,9 @@ export function GameUI() {
 
   const fetchGifts = useCallback(async () => {
     try {
-      const res = await fetch("/api/gifts")
+      const res = await fetch("/api/gifts", {
+        headers: { "x-user-id": gameState?.sessionId || "" },
+      })
       if (res.ok) {
         const data = await res.json()
         setUnclaimedGifts(data.gifts || [])
